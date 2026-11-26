@@ -11,4 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Internal CA, one-time enrolment tokens with CA fingerprint pinning, mTLS agent gateway, certificate revocation and renewal.
 - SQLite store with embedded migrations, audit log, host presence (online/offline) tracking.
 - `sentrix-server token create`, `sentrix-agent enroll|run`.
+- Agent collectors: CPU (total/per-core/iowait/steal), load, memory/swap, disk usage + inodes, disk I/O, network, processes, systemd failed/watched units, Docker containers, pending reboot, TLS certificate expiry.
+- Bounded on-disk agent buffer with replay; server ingestion with raw → 1 min → 1 h rollups and retention.
+- dpkg, RPM (EVR) and apk version comparators with table tests.
+- Linux acceptance test in CI.
 - Repository bootstrap: Go module, layout, Makefile, CI, lint config, licence, docs skeleton.

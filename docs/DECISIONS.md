@@ -45,3 +45,13 @@ Short ADR entries: date, decision, alternatives, reason.
 ## 2026-11-27 — Command delivery
 - **Decision:** HTTP long-poll (`GET /agent/v1/commands`, up to 30 s) instead of WebSocket.
 - **Reason:** works through every proxy, no extra dependency, latency is irrelevant for patching.
+
+## 2026-11-27 — Linux verification in CI
+- **Decision:** acceptance scripts (`test/acceptance/*.sh`) run in GitHub Actions on `ubuntu-latest`
+  (real Linux, Docker available) because the development machine is macOS without a VM.
+- **Reason:** brief §0.0.7 "verify, don't assume"; CI is the only Linux available.
+
+## 2026-11-27 — Metrics schema
+- **Decision:** `series(host, name, labels)` + `metrics_raw/1m/1h` (WITHOUT ROWID, PK series+ts).
+  Rollups are watermark-driven with a 10-bucket overlap so late (buffer-replayed) data is re-aggregated.
+- **Reason:** compact, idempotent, easily replaced by a TSDB behind `store.MetricStore`.
