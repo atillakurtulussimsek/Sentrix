@@ -21,6 +21,7 @@ import (
 	"github.com/atillakurtulussimsek/Sentrix/internal/auth"
 	"github.com/atillakurtulussimsek/Sentrix/internal/config"
 	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
+	"github.com/atillakurtulussimsek/Sentrix/internal/notify"
 	"github.com/atillakurtulussimsek/Sentrix/internal/pki"
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
 	"github.com/atillakurtulussimsek/Sentrix/web"
@@ -53,6 +54,8 @@ type Server struct {
 	orchKick       chan struct{}
 	orchMu         sync.Mutex
 	now            func() time.Time
+	alertMu        sync.Mutex
+	sender         *notify.Sender
 }
 
 type job struct {
@@ -86,7 +89,10 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 	s := &Server{cfg: cfg, db: db, ca: ca, log: log, hub: NewHub(), onlineCache: map[string]bool{}, mets: db.Metrics(),
 		cat: cat, rend: rend, box: box,
 		loginIP: auth.NewLimiter(20, 15*time.Minute), loginUser: auth.NewLimiter(5, 15*time.Minute),
-		orchKick: make(chan struct{}, 1), now: time.Now}
+		orchKick: make(chan struct{}, 1), now: time.Now, sender: notify.NewSender()}
+	if err := s.seedDefaultRules(context.Background()); err != nil {
+		return nil, fmt.Errorf("seed alert rules: %w", err)
+	}
 	s.bgCtx = context.Background()
 	if cfg.Feeds.Enabled {
 		s.jobs = append(s.jobs,
@@ -99,6 +105,8 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 		job{"rollup", time.Minute, func(ctx context.Context) error { return s.mets.Rollup(ctx, time.Now()) }},
 		job{"sessions", time.Hour, s.db.PruneSessions},
 		job{"policies", time.Minute, s.RunPolicies},
+		job{"alerts", 15 * time.Second, s.EvaluateAlerts},
+		job{"digest", time.Minute, s.digestJob},
 		job{"retention", time.Hour, func(ctx context.Context) error {
 			r := s.cfg.Retention
 			return s.mets.Prune(ctx, time.Now(), r.Raw, r.Minute, r.Hour)
@@ -184,6 +192,11 @@ func (s *Server) Run(ctx context.Context) error {
 	go func() {
 		defer wg.Done()
 		s.orchestratorLoop(jobCtx)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.alertEventLoop(jobCtx)
 	}()
 	for _, j := range s.jobs {
 		wg.Add(1)

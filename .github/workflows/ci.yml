@@ -31,6 +31,8 @@ jobs:
       - run: make build
       - name: Linux acceptance (enrol, presence, collectors, rollups, RSS)
         run: sudo -E env "PATH=$PATH" test/acceptance/linux-local.sh
+      - name: Disk threshold alert → one webhook, no repeat, resolve (M7)
+        run: sudo -E env "PATH=$PATH" test/acceptance/alert-disk.sh
 
   inventory-containers:
     runs-on: ubuntu-latest

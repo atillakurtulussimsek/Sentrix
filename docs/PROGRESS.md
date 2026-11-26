@@ -1,5 +1,5 @@
 # Progress
-Current milestone: M6 — Actions & patch orchestration
+Current milestone: M7 — Alerts & notifications
 Last updated: 2026-11-27
 
 ## Milestones
@@ -9,7 +9,7 @@ Last updated: 2026-11-27
 - [x] M3 Web UI foundation — role/CSRF/MFA/rate-limit tests; live charts verified in browser via SSE (test/tools/fakefleet)
 - [x] M4 Inventory — CI `inventory-containers`: package names and security updates identical to native tools on debian:bookworm-20240110 (88/13), ubuntu:noble-20240423 (90/41), rockylinux:9.3 (141/62), alpine:3.19.0 (15/–)
 - [x] M5 Vulnerability engine — CI `vuln-container` (live feeds): debian:bookworm-20240110 glibc 47/47 CVEs identical to tracker+dpkg oracle; CVE-2023-6246 (fixed 2.36-9+deb12u4) disappears after upgrade; golden feed tests + lifecycle test
-- [ ] M6 Actions & patch orchestration
+- [x] M6 Actions & patch orchestration — CI `patch-containers` via `sentrix` CLI: security-only plan on debian:bookworm-20240110 + rockylinux:9.3, dry run 13/68 package changes, applied, CVEs 199→148 and 615→2, audit trail complete; executor test proves unknown/raw actions are rejected before any program runs; policy outside window creates nothing (unit test)
 - [ ] M7 Alerts & notifications
 - [ ] M8 Proxmox snapshot hook & generic webhook hook
 - [ ] M9 Hardening & polish
@@ -20,4 +20,4 @@ Last updated: 2026-11-27
 - Docker is not installed on the build host: `make e2e` (multi-distro containers) cannot be executed here.
 
 ## Next up
-- M6: verify patch-containers CI job; then M7 alerts & notifications.
+- M7: verify alert-disk CI step; then M8 Proxmox snapshot + webhook hooks.

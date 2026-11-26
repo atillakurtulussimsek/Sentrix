@@ -17,6 +17,7 @@ linters:
         - G304 # file paths come from config, not users
         - G204 # agent executor uses fixed argv, verified by tests
         - G202 # SQL concatenation only with internal constant table/column names
+        - G117 # notify.Config secret fields are sealed with the server key before marshalling
     revive:
       rules:
         - name: exported

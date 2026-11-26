@@ -15,6 +15,7 @@ import (
 	"github.com/atillakurtulussimsek/Sentrix/internal/auth"
 	"github.com/atillakurtulussimsek/Sentrix/internal/cli"
 	"github.com/atillakurtulussimsek/Sentrix/internal/config"
+	"github.com/atillakurtulussimsek/Sentrix/internal/notify"
 	"github.com/atillakurtulussimsek/Sentrix/internal/server"
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
 	"github.com/atillakurtulussimsek/Sentrix/internal/version"
@@ -31,6 +32,8 @@ Commands:
   user create|reset-password --username U [--role R]
                               manage local users (password via SENTRIX_PASSWORD or stdin)
   audit [--target ID]         print the audit log
+  channel create ...          add a notification channel (headless setup)
+  rule create ...             add a threshold alert rule (headless setup)
   api-token create --user U [--scope read|operate|admin] [--name N]
                               create an API token for the sentrix CLI
   hosts                       list hosts and their status
@@ -180,6 +183,61 @@ func run() error {
 			e := es[i]
 			fmt.Printf("%s\t%s\t%s\t%s\t%s\n", e.TS.Format(time.RFC3339), e.Actor, e.Action, e.Target, e.Detail)
 		}
+		return nil
+	case "channel":
+		if len(args) == 0 || args[0] != "create" {
+			return fmt.Errorf("usage: channel create --name N --kind webhook|slack|discord|ntfy --url URL [--topic T]")
+		}
+		cf := flag.NewFlagSet("channel create", flag.ExitOnError)
+		name := cf.String("name", "", "channel name")
+		kind := cf.String("kind", "webhook", "webhook | slack | discord | ntfy")
+		u := cf.String("url", "", "URL")
+		topic := cf.String("topic", "", "ntfy topic")
+		_ = cf.Parse(args[1:])
+		b, _ := json.Marshal(notify.Config{URL: *u, Topic: *topic})
+		c, err := db.SaveChannel(ctx, store.Channel{Name: *name, Kind: *kind, Config: string(b), Enabled: true})
+		if err != nil {
+			return err
+		}
+		fmt.Println(c.ID)
+		return nil
+	case "rule":
+		if len(args) == 0 || args[0] != "create" {
+			return fmt.Errorf("usage: rule create --name N --metric M [--labels L] --op '>' --value V [--for 5m] [--cooldown 6h] [--channel NAME]")
+		}
+		rf := flag.NewFlagSet("rule create", flag.ExitOnError)
+		name := rf.String("name", "", "rule name")
+		metric := rf.String("metric", "", "metric, e.g. disk.used_pct")
+		labels := rf.String("labels", "", "exact labels, e.g. mount=/")
+		op := rf.String("op", ">", "> >= < <=")
+		val := rf.Float64("value", 90, "threshold")
+		forDur := rf.Duration("for", 5*time.Minute, "condition must hold this long")
+		cool := rf.Duration("cooldown", 6*time.Hour, "minimum time between notifications")
+		chName := rf.String("channel", "", "channel name (default: all channels)")
+		sev := rf.String("severity", "warning", "info | warning | critical")
+		_ = rf.Parse(args[1:])
+		rc := notify.RuleConfig{Metric: *metric, Labels: *labels, Op: *op, Value: *val}
+		if err := rc.Validate("threshold"); err != nil {
+			return err
+		}
+		var chans []string
+		if *chName != "" {
+			all, _ := db.ListChannels(ctx)
+			for _, c := range all {
+				if c.Name == *chName {
+					chans = append(chans, c.ID)
+				}
+			}
+			if len(chans) == 0 {
+				return fmt.Errorf("channel %q not found", *chName)
+			}
+		}
+		b, _ := json.Marshal(rc)
+		r, err := db.SaveRule(ctx, store.Rule{Name: *name, Kind: "threshold", Config: string(b), Severity: *sev, Channels: chans, For: *forDur, Cooldown: *cool, Enabled: true})
+		if err != nil {
+			return err
+		}
+		fmt.Println(r.ID)
 		return nil
 	case "api-token":
 		if len(args) == 0 || args[0] != "create" {

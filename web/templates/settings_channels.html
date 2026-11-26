@@ -1,0 +1,57 @@
+{{define "title"}}Notification channels{{end}}
+{{define "content"}}
+{{template "settingsnav" .}}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <section class="card overflow-x-auto">
+      <div class="card-header"><h2>Channels</h2></div>
+      {{if .Data.Channels}}<table class="table table-compact"><thead><tr><th>Name</th><th>Type</th><th>Target</th><th></th></tr></thead><tbody>
+      {{range .Data.Channels}}<tr class="{{if not .Enabled}}opacity-50{{end}}"><td class="font-medium">{{.Name}}</td><td><span class="badge">{{.Kind}}</span></td><td class="max-w-xs truncate font-mono text-xs text-zinc-500">{{.Target}}</td>
+        <td class="whitespace-nowrap text-right">
+          <form method="post" action="/settings/channels/{{.ID}}/test" class="inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-teal-700 hover:underline dark:text-teal-300">test</button></form>
+          <form method="post" action="/settings/channels/{{.ID}}/toggle" class="ml-2 inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs hover:underline">{{if .Enabled}}disable{{else}}enable{{end}}</button></form>
+          <form method="post" action="/settings/channels/{{.ID}}/delete" class="ml-2 inline" data-confirm="Delete channel {{.Name}}?"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-red-600 hover:underline">delete</button></form></td></tr>{{end}}
+      </tbody></table>{{else}}<div class="empty">No channels yet.</div>{{end}}
+    </section>
+    <form method="post" action="/settings/digest" class="card space-y-3 p-5">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <h2 class="text-sm font-semibold">Digest — “what needs attention”</h2>
+      <label class="block"><span class="label">Schedule (cron; empty = off)</span><input name="digest_cron" value="{{.Data.DigestCron}}" placeholder="CRON_TZ=Europe/Istanbul 0 8 * * MON-FRI" class="input mt-1 font-mono"></label>
+      <div class="flex flex-wrap gap-3 text-sm">{{$sel := .Data.DigestChannels}}{{range .Data.Channels}}<label class="flex items-center gap-1.5"><input type="checkbox" name="digest_channels" value="{{.ID}}" {{range $sel}}{{if eq . $.ID}}checked{{end}}{{end}}> {{.Name}}</label>{{end}}</div>
+      <p class="text-xs text-zinc-500">Last sent: {{or .Data.DigestLast "never"}}</p>
+      <div class="flex gap-2"><button class="btn-secondary">Save</button><button name="send_now" value="1" class="btn-secondary">Save &amp; send now</button></div>
+    </form>
+    <section class="card overflow-x-auto">
+      <div class="card-header"><h2>Delivery log</h2></div>
+      {{if .Data.Logs}}<table class="table table-compact"><tbody>{{range .Data.Logs}}<tr><td class="whitespace-nowrap text-xs text-zinc-500">{{fmtTime .TS}}</td><td class="text-xs">{{index $.Data.Names .ChannelID}}</td><td class="text-xs">{{.Kind}}</td>
+        <td><span class="badge {{if eq .Status "sent"}}badge-online{{else}}badge-offline{{end}}">{{.Status}}</span></td><td class="max-w-xs truncate text-xs text-red-600" title="{{.Error}}">{{.Error}}</td></tr>{{end}}</tbody></table>
+      {{else}}<div class="empty">No notifications sent yet.</div>{{end}}
+    </section>
+  </div>
+  <form method="post" action="/settings/channels" class="card space-y-3 p-5">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <h2 class="text-sm font-semibold">Add channel</h2>
+    <label class="block"><span class="label">Name</span><input name="name" required class="input mt-1"></label>
+    <label class="block"><span class="label">Type</span><select name="kind" class="input mt-1"><option value="webhook">Generic webhook</option><option value="slack">Slack</option><option value="discord">Discord</option><option value="telegram">Telegram</option><option value="ntfy">ntfy</option><option value="email">Email (SMTP)</option></select></label>
+    <label class="block"><span class="label">URL — webhook / Slack / Discord / ntfy server</span><input name="url" class="input mt-1 font-mono" placeholder="https://…"></label>
+    <label class="block"><span class="label">Webhook HMAC secret (optional)</span><input name="secret" type="password" autocomplete="off" class="input mt-1"></label>
+    <div class="grid grid-cols-2 gap-2">
+      <label class="block"><span class="label">Bot / access token</span><input name="token" type="password" autocomplete="off" class="input mt-1"></label>
+      <label class="block"><span class="label">Telegram chat ID</span><input name="chat_id" class="input mt-1"></label>
+    </div>
+    <label class="block"><span class="label">ntfy topic</span><input name="topic" class="input mt-1"></label>
+    <details class="text-sm"><summary class="cursor-pointer text-zinc-600 dark:text-zinc-400">SMTP settings</summary>
+      <div class="mt-2 grid grid-cols-2 gap-2">
+        <label class="col-span-2 block"><span class="label">Host</span><input name="host" class="input mt-1"></label>
+        <label class="block"><span class="label">Port</span><input name="port" type="number" class="input mt-1" placeholder="587"></label>
+        <label class="block"><span class="label">TLS</span><select name="tls_mode" class="input mt-1"><option value="starttls">STARTTLS</option><option value="tls">implicit TLS</option><option value="none">none</option></select></label>
+        <label class="block"><span class="label">Username</span><input name="username" class="input mt-1" autocomplete="off"></label>
+        <label class="block"><span class="label">Password</span><input name="password" type="password" class="input mt-1" autocomplete="off"></label>
+        <label class="col-span-2 block"><span class="label">From</span><input name="from" class="input mt-1"></label>
+        <label class="col-span-2 block"><span class="label">To (comma separated)</span><input name="to" class="input mt-1"></label>
+      </div></details>
+    <p class="text-xs text-zinc-500">Secrets are encrypted at rest with the server key.</p>
+    <button class="btn-primary">Save channel</button>
+  </form>
+</div>
+{{end}}
