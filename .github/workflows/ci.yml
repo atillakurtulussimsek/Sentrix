@@ -55,3 +55,15 @@ jobs:
       - run: make build-linux
       - name: Known-vulnerable package detected, disappears after upgrade (live feeds)
         run: test/acceptance/vuln-container.sh
+
+  patch-containers:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make build-linux
+      - name: Security-only plan on Debian + Rocky containers via CLI (live feeds)
+        run: test/acceptance/patch-containers.sh

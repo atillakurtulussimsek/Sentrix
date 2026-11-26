@@ -471,3 +471,9 @@ func (s *Server) auditReq(r *http.Request, action, target, detail string) {
 }
 
 var _ = template.HTML("")
+
+func parseState(js string) protocol.HostState {
+	var st protocol.HostState
+	_ = json.Unmarshal([]byte(js), &st)
+	return st
+}

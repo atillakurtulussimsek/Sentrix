@@ -43,6 +43,14 @@ func (c *client) post(ctx context.Context, path string, in, out any) error {
 	return c.do(req, out)
 }
 
+func (c *client) get(ctx context.Context, path string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+path, nil)
+	if err != nil {
+		return err
+	}
+	return c.do(req, out)
+}
+
 func (c *client) do(req *http.Request, out any) error {
 	resp, err := c.http.Do(req)
 	if err != nil {

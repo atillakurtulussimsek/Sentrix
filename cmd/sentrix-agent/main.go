@@ -90,6 +90,7 @@ func run() error {
 			return err
 		}
 		a.EnableInventory()
+		a.EnableCommands()
 		return a.Run(ctx)
 	case "inventory":
 		ivf := flag.NewFlagSet("inventory", flag.ExitOnError)

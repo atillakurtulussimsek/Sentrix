@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/atillakurtulussimsek/Sentrix/internal/auth"
 	"github.com/atillakurtulussimsek/Sentrix/internal/cli"
 	"github.com/atillakurtulussimsek/Sentrix/internal/config"
 	"github.com/atillakurtulussimsek/Sentrix/internal/server"
@@ -27,6 +28,11 @@ Commands:
                               create a one-time agent enrolment token
   ca-fingerprint              print the CA fingerprint agents must pin
   stats                       print a JSON summary of stored data
+  user create|reset-password --username U [--role R]
+                              manage local users (password via SENTRIX_PASSWORD or stdin)
+  audit [--target ID]         print the audit log
+  api-token create --user U [--scope read|operate|admin] [--name N]
+                              create an API token for the sentrix CLI
   hosts                       list hosts and their status
   findings [--host NAME]      list vulnerability findings (TSV)
   sync-feeds                  download vulnerability feeds now and re-match hosts
@@ -115,6 +121,90 @@ func run() error {
 	case "sync-feeds":
 		cfg.Feeds.Enabled = true
 		return srv.SyncFeeds(ctx, true)
+	case "user":
+		if len(args) == 0 || (args[0] != "create" && args[0] != "reset-password") {
+			return fmt.Errorf("usage: user create|reset-password --username U [--role admin|operator|viewer]  (password from SENTRIX_PASSWORD or stdin)")
+		}
+		uf := flag.NewFlagSet("user", flag.ExitOnError)
+		name := uf.String("username", "", "username")
+		role := uf.String("role", "admin", "admin | operator | viewer")
+		_ = uf.Parse(args[1:])
+		pw := os.Getenv("SENTRIX_PASSWORD")
+		if pw == "" {
+			fmt.Fprint(os.Stderr, "password: ")
+			if _, err := fmt.Fscanln(os.Stdin, &pw); err != nil {
+				return err
+			}
+		}
+		if err := auth.ValidatePassword(pw); err != nil {
+			return err
+		}
+		hash, err := auth.HashPassword(pw)
+		if err != nil {
+			return err
+		}
+		if args[0] == "create" {
+			if store.RoleRank(*role) == 0 {
+				return fmt.Errorf("invalid role")
+			}
+			u, err := db.CreateUser(ctx, *name, hash, *role)
+			if err != nil {
+				return err
+			}
+			_ = db.Audit(ctx, "cli:sentrix-server", "user.create", u.ID, "username="+*name+" role="+*role)
+			fmt.Println("created", u.Username, u.Role)
+			return nil
+		}
+		u, err := db.GetUserByName(ctx, *name)
+		if err != nil {
+			return fmt.Errorf("user %q not found", *name)
+		}
+		u.PasswordHash, u.TOTPSecret, u.Disabled = hash, "", false
+		if err := db.UpdateUser(ctx, u); err != nil {
+			return err
+		}
+		_ = db.DeleteUserSessions(ctx, u.ID)
+		_ = db.Audit(ctx, "cli:sentrix-server", "user.reset_password", u.ID, "2FA cleared")
+		fmt.Println("password reset (2FA disabled) for", u.Username)
+		return nil
+	case "audit":
+		af := flag.NewFlagSet("audit", flag.ExitOnError)
+		target := af.String("target", "", "filter by target ID")
+		limit := af.Int("limit", 100, "entries")
+		_ = af.Parse(args)
+		es, err := db.ListAudit(ctx, *target, *limit)
+		if err != nil {
+			return err
+		}
+		for i := len(es) - 1; i >= 0; i-- {
+			e := es[i]
+			fmt.Printf("%s\t%s\t%s\t%s\t%s\n", e.TS.Format(time.RFC3339), e.Actor, e.Action, e.Target, e.Detail)
+		}
+		return nil
+	case "api-token":
+		if len(args) == 0 || args[0] != "create" {
+			return fmt.Errorf("usage: api-token create --user NAME [--scope read|operate|admin] [--name NAME] [--ttl 720h]")
+		}
+		af := flag.NewFlagSet("api-token create", flag.ExitOnError)
+		user := af.String("user", "", "user the token acts as")
+		scope := af.String("scope", "read", "read | operate | admin")
+		name := af.String("name", "cli", "token name")
+		ttl := af.Duration("ttl", 0, "lifetime (0 = no expiry)")
+		_ = af.Parse(args[1:])
+		u, err := db.GetUserByName(ctx, *user)
+		if err != nil {
+			return fmt.Errorf("user %q not found", *user)
+		}
+		if *scope != "read" && *scope != "operate" && *scope != "admin" {
+			return fmt.Errorf("invalid scope")
+		}
+		tok := server.GenerateToken("sxa_")
+		if _, err := db.CreateAPIToken(ctx, store.HashToken(tok), u.ID, *name, *scope, *ttl); err != nil {
+			return err
+		}
+		_ = db.Audit(ctx, "cli:sentrix-server", "api_token.create", u.ID, "name="+*name+" scope="+*scope)
+		fmt.Println(tok)
+		return nil
 	case "stats":
 		st, err := db.Stats(ctx)
 		if err != nil {

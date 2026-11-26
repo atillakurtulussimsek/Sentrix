@@ -50,6 +50,9 @@ type Server struct {
 	inventoryHooks []func(ctx context.Context, hostID string)
 	feeds          feedRunner
 	bgCtx          context.Context
+	orchKick       chan struct{}
+	orchMu         sync.Mutex
+	now            func() time.Time
 }
 
 type job struct {
@@ -82,7 +85,8 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 	}
 	s := &Server{cfg: cfg, db: db, ca: ca, log: log, hub: NewHub(), onlineCache: map[string]bool{}, mets: db.Metrics(),
 		cat: cat, rend: rend, box: box,
-		loginIP: auth.NewLimiter(20, 15*time.Minute), loginUser: auth.NewLimiter(5, 15*time.Minute)}
+		loginIP: auth.NewLimiter(20, 15*time.Minute), loginUser: auth.NewLimiter(5, 15*time.Minute),
+		orchKick: make(chan struct{}, 1), now: time.Now}
 	s.bgCtx = context.Background()
 	if cfg.Feeds.Enabled {
 		s.jobs = append(s.jobs,
@@ -94,6 +98,7 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 		job{"presence", 5 * time.Second, s.checkPresence},
 		job{"rollup", time.Minute, func(ctx context.Context) error { return s.mets.Rollup(ctx, time.Now()) }},
 		job{"sessions", time.Hour, s.db.PruneSessions},
+		job{"policies", time.Minute, s.RunPolicies},
 		job{"retention", time.Hour, func(ctx context.Context) error {
 			r := s.cfg.Retention
 			return s.mets.Prune(ctx, time.Now(), r.Raw, r.Minute, r.Hour)
@@ -175,6 +180,11 @@ func (s *Server) Run(ctx context.Context) error {
 	jobCtx, cancelJobs := context.WithCancel(ctx)
 	s.bgCtx = jobCtx
 	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.orchestratorLoop(jobCtx)
+	}()
 	for _, j := range s.jobs {
 		wg.Add(1)
 		go func(j job) {

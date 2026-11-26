@@ -67,3 +67,28 @@ Short ADR entries: date, decision, alternatives, reason.
   API calls with `Authorization: Bearer` tokens are CSRF-exempt (not ambient credentials). Strict CSP
   (`script-src 'self'`, no inline handlers).
 - **Reason:** OWASP ASVS L1 V3/V4 basics with no extra dependencies.
+
+## 2026-11-27 — Vulnerability data sources
+- **Decision:** Debian → Debian Security Tracker JSON (includes open/unfixed issues and urgency). Ubuntu,
+  Alpine, Rocky, AlmaLinux → OSV.dev ecosystem exports (`<eco>/all.zip`). Red Hat OVAL/CSAF is *not* parsed.
+  Rocky's OSV export is incomplete (e.g. RLSA-2024:4312 / CVE-2024-6387 missing), so Rocky hosts are also
+  matched against AlmaLinux advisories (same RHEL sources and NEVRs; `.alma.N` rebuild suffix stripped).
+  NVD is queried per CVE (rate-limited) only for CVEs present in findings without a CVSS score.
+- **Alternatives:** RHEL OVAL v2 (large XML, RHEL-only NEVRs), NVD bulk sync (slow without key).
+- **Reason:** keyless, uniform JSON, distro-fixed versions (backport aware) for every v0.1 target.
+- **Cost:** the Ubuntu export is large (~750k affected rows for 24.04 because of kernel flavours); matching
+  loads only advisories for installed packages.
+
+## 2026-11-27 — Matching semantics
+- dpkg/apk: match by *source* package and source version (binNMU-safe); rpm: binary name, highest installed
+  version for install-only packages (kernels). A finding disappears only when the installed version compares
+  ≥ the distro fixed version with the distro's own comparator. Exceptions never delete findings; they are
+  excluded from counts/risk and visible on demand.
+
+## 2026-11-27 — Patch orchestration
+- **Decision:** database-driven state machine advanced by a single orchestrator loop (idempotent, survives
+  restarts). Every plan dry-runs first; approval is a separate step (policies auto-approve only after a clean
+  dry run, inside their window). Any host failure stops the rollout. Security-only on apk is resolved server-side
+  into `patch_packages` (apk has no security metadata). The agent executes only allow-listed programs with
+  validated argv; `allow_patching: false` makes an agent read-only (dry runs still allowed).
+- **Dependency:** `github.com/robfig/cron/v3` for maintenance-window cron parsing (CRON_TZ support).

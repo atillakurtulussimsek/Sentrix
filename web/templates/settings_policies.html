@@ -1,0 +1,42 @@
+{{define "title"}}Patch policies{{end}}
+{{define "content"}}
+{{template "settingsnav" .}}
+<div class="grid gap-6 lg:grid-cols-3">
+  <section class="card overflow-x-auto lg:col-span-2">
+    <div class="card-header"><h2>Policies</h2></div>
+    {{if .Data.Policies}}
+    <table class="table table-compact"><thead><tr><th>Policy</th><th>Group</th><th>Mode</th><th>Window</th><th>Rollout</th><th></th></tr></thead><tbody>
+    {{range .Data.Policies}}<tr>
+      <td class="font-medium">{{.Name}}{{if not .Enabled}} <span class="badge badge-muted">disabled</span>{{end}}</td>
+      <td>{{or .Group "(no group)"}}</td>
+      <td>{{if eq .Mode "notify_only"}}<span class="badge badge-muted">notify only</span>{{else}}<span class="badge badge-warn">{{.Mode}}</span>{{end}}</td>
+      <td class="text-xs"><code>{{.WindowCron}}</code> · {{.WindowMinutes}}m{{if .OpenNow}} <span class="badge badge-online">open now</span>{{else if not .NextWindow.IsZero}}<div class="text-zinc-500">next {{fmtTime .NextWindow}}</div>{{end}}{{with .Err}}<div class="text-red-600">{{.}}</div>{{end}}</td>
+      <td class="text-xs">canary {{.Canary}} · parallel {{.MaxParallel}} · reboot {{.Reboot}}</td>
+      <td class="text-right"><form method="post" action="/settings/policies/{{.ID}}/delete" data-confirm="Delete policy {{.Name}}?"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-red-600 hover:underline">delete</button></form></td>
+    </tr>{{end}}</tbody></table>
+    {{else}}<div class="empty">No policies. Without a policy every group is notify-only: nothing is patched automatically.</div>{{end}}
+  </section>
+  <form method="post" action="/settings/policies" class="card space-y-3 p-5">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <h2 class="text-sm font-semibold">Add policy</h2>
+    <label class="block"><span class="label">Name</span><input name="name" required class="input mt-1"></label>
+    <label class="block"><span class="label">Host group</span><input name="group" list="groups" class="input mt-1" placeholder="production"><datalist id="groups">{{range .Data.Groups}}<option value="{{.}}">{{end}}</datalist></label>
+    <label class="block"><span class="label">Mode</span><select name="mode" class="input mt-1"><option value="notify_only">notify_only (default, safe)</option><option value="auto_security">auto_security</option><option value="auto_all">auto_all</option></select></label>
+    <label class="block"><span class="label">Maintenance window (cron, optional CRON_TZ=)</span><input name="window_cron" class="input mt-1 font-mono" placeholder="CRON_TZ=Europe/Istanbul 0 3 * * SUN"></label>
+    <div class="grid grid-cols-3 gap-2">
+      <label class="block"><span class="label">Minutes</span><input name="window_minutes" type="number" value="120" class="input mt-1"></label>
+      <label class="block"><span class="label">Canary</span><input name="canary" type="number" value="1" min="0" class="input mt-1"></label>
+      <label class="block"><span class="label">Parallel</span><input name="max_parallel" type="number" value="1" min="1" class="input mt-1"></label>
+    </div>
+    <label class="block"><span class="label">Reboot</span><select name="reboot" class="input mt-1"><option value="never">never</option><option value="if_required">if required</option><option value="always">always</option></select></label>
+    <label class="block"><span class="label">Snapshot hook</span><select name="snapshot_hook" class="input mt-1"><option value="">none</option>{{range .Data.Hooks}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="snapshot_required" value="1" checked> abort host if snapshot fails</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="enabled" value="1" checked> enabled</label>
+    <div class="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+      {{t "disclaimer"}}
+      <label class="mt-2 flex items-start gap-2"><input type="checkbox" name="accept_disclaimer" value="1"> <span>Required for automatic modes: I accept this.</span></label>
+    </div>
+    <button class="btn-primary">Save policy</button>
+  </form>
+</div>
+{{end}}
