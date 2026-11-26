@@ -93,6 +93,7 @@ func DefaultServer() Server {
 // Agent is the sentrix-agent configuration.
 type Agent struct {
 	ServerURL      string        `yaml:"server_url" env:"SENTRIX_SERVER_URL"`
+	Hostname       string        `yaml:"hostname" env:"SENTRIX_HOSTNAME"`
 	StateDir       string        `yaml:"state_dir" env:"SENTRIX_STATE_DIR"`
 	Interval       time.Duration `yaml:"interval" env:"SENTRIX_INTERVAL"`
 	SendInterval   time.Duration `yaml:"send_interval" env:"SENTRIX_SEND_INTERVAL"`

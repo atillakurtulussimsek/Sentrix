@@ -199,22 +199,40 @@ func (d *DB) SetEPSS(ctx context.Context, scores map[string]vuln.EPSSEntry) (int
 	return n, tx.Commit()
 }
 
-// AffectedIndex loads all advisories of an ecosystem keyed by package.
-func (d *DB) AffectedIndex(ctx context.Context, ecosystem string) (vuln.AffectedIndex, error) {
-	rows, err := d.sql.QueryContext(ctx, `SELECT source, package, vuln_id, advisory, introduced, fixed, distro_severity FROM vuln_affected WHERE ecosystem = ?`, ecosystem)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+// AffectedIndex loads advisories of an ecosystem for the given package keys (all
+// packages when keys is nil), keyed by package.
+func (d *DB) AffectedIndex(ctx context.Context, ecosystem string, keys []string) (vuln.AffectedIndex, error) {
 	idx := vuln.AffectedIndex{}
-	for rows.Next() {
-		a := vuln.Affected{Ecosystem: ecosystem}
-		if err := rows.Scan(&a.Source, &a.Package, &a.VulnID, &a.Advisory, &a.Introduced, &a.Fixed, &a.DistroSeverity); err != nil {
+	load := func(q string, args ...any) error {
+		rows, err := d.sql.QueryContext(ctx, q, args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			a := vuln.Affected{Ecosystem: ecosystem}
+			if err := rows.Scan(&a.Source, &a.Package, &a.VulnID, &a.Advisory, &a.Introduced, &a.Fixed, &a.DistroSeverity); err != nil {
+				return err
+			}
+			idx[a.Package] = append(idx[a.Package], a)
+		}
+		return rows.Err()
+	}
+	const cols = `SELECT source, package, vuln_id, advisory, introduced, fixed, distro_severity FROM vuln_affected WHERE ecosystem = ?`
+	if keys == nil {
+		return idx, load(cols, ecosystem)
+	}
+	for start := 0; start < len(keys); start += 400 {
+		chunk := keys[start:min(start+400, len(keys))]
+		args := []any{ecosystem}
+		for _, k := range chunk {
+			args = append(args, k)
+		}
+		if err := load(cols+` AND package IN (?`+strings.Repeat(",?", len(chunk)-1)+`)`, args...); err != nil {
 			return nil, err
 		}
-		idx[a.Package] = append(idx[a.Package], a)
 	}
-	return idx, rows.Err()
+	return idx, nil
 }
 
 // VulnMeta is stored vulnerability metadata.

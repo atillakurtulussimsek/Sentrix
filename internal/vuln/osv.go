@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -186,3 +187,36 @@ func ParseOSVZip(zr *zip.Reader, source string, wanted map[string]bool, sink Sin
 	}
 	return total, nil
 }
+
+// almaSuffix matches AlmaLinux rebuild suffixes such as ".alma.1".
+var almaSuffix = regexp.MustCompile(`\.alma(\.\d+)*$`)
+
+// RHELCrossSink copies AlmaLinux advisories to Rocky Linux ecosystems of the same major
+// version. Both rebuild identical RHEL sources with identical NEVRs (Alma marks its few
+// modified rebuilds with ".alma.N", which is stripped). This compensates for gaps in the
+// Rocky OSV export. Records for Alma ecosystems not in AlmaWanted are dropped.
+type RHELCrossSink struct {
+	Inner      Sink
+	AlmaWanted map[string]bool // e.g. {"almalinux:9": true}
+	RockyMajor map[string]bool // e.g. {"9": true}
+}
+
+// Affected implements Sink.
+func (s RHELCrossSink) Affected(a Affected) error {
+	if s.AlmaWanted[a.Ecosystem] {
+		if err := s.Inner.Affected(a); err != nil {
+			return err
+		}
+	}
+	major := strings.TrimPrefix(a.Ecosystem, "almalinux:")
+	if strings.HasPrefix(a.Ecosystem, "almalinux:") && s.RockyMajor[major] {
+		r := a
+		r.Ecosystem = "rocky:" + major
+		r.Fixed = almaSuffix.ReplaceAllString(a.Fixed, "")
+		return s.Inner.Affected(r)
+	}
+	return nil
+}
+
+// Info implements Sink.
+func (s RHELCrossSink) Info(i Info) error { return s.Inner.Info(i) }

@@ -25,6 +25,8 @@ import (
 type Identity struct {
 	AgentID   string `json:"agent_id"`
 	ServerURL string `json:"server_url"`
+	// Hostname overrides os.Hostname() when set at enrolment (--hostname).
+	Hostname string `json:"hostname,omitempty"`
 }
 
 const (
@@ -73,8 +75,9 @@ func pinnedTLS(caPEM []byte) (*tls.Config, error) {
 }
 
 // Enroll performs first-time enrolment with a one-time token. caFingerprint (hex SHA-256
-// of the server CA, shown in the UI) is required to bootstrap trust.
-func Enroll(ctx context.Context, stateDir, serverURL, token, caFingerprint, hostname, machineID string) (Identity, error) {
+// of the server CA, shown in the UI) is required to bootstrap trust. A non-empty
+// fixedHostname is persisted and reported instead of the OS hostname.
+func Enroll(ctx context.Context, stateDir, serverURL, token, caFingerprint, hostname, machineID string, fixedHostname ...string) (Identity, error) {
 	serverURL = strings.TrimRight(serverURL, "/")
 	caFingerprint = strings.ToLower(strings.ReplaceAll(caFingerprint, ":", ""))
 	if caFingerprint == "" {
@@ -131,6 +134,9 @@ func Enroll(ctx context.Context, stateDir, serverURL, token, caFingerprint, host
 		return Identity{}, err
 	}
 	id := Identity{AgentID: er.AgentID, ServerURL: serverURL}
+	if len(fixedHostname) > 0 {
+		id.Hostname = fixedHostname[0]
+	}
 	idb, _ := json.MarshalIndent(id, "", "  ")
 	for name, data := range map[string][]byte{fileKey: keyPEM, fileCert: []byte(er.CertPEM), fileCA: caPEM, fileIdentity: idb} {
 		if err := os.WriteFile(filepath.Join(stateDir, name), data, 0o600); err != nil {

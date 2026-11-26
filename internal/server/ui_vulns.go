@@ -200,7 +200,7 @@ var feedDescriptions = []struct{ key, name, desc string }{
 	{"osv-ubuntu", "OSV · Ubuntu", "Ubuntu CVE tracker data via OSV.dev."},
 	{"osv-alpine", "OSV · Alpine", "Alpine secdb via OSV.dev."},
 	{"osv-rocky", "OSV · Rocky Linux", "Rocky Linux errata (RLSA) via OSV.dev."},
-	{"osv-almalinux", "OSV · AlmaLinux", "AlmaLinux errata (ALSA) via OSV.dev."},
+	{"osv-almalinux", "OSV · AlmaLinux", "AlmaLinux errata (ALSA) via OSV.dev; also applied to Rocky Linux (same RHEL sources)."},
 	{"cisa-kev", "CISA KEV", "Known exploited vulnerabilities catalog."},
 	{"first-epss", "FIRST EPSS", "Exploit prediction scores."},
 	{"nvd", "NVD", "CVSS scores for CVEs lacking distro scoring (incremental)."},
@@ -213,7 +213,7 @@ func (s *Server) feedSummary(ctx context.Context) []feedView {
 	for _, f := range feedDescriptions {
 		rel := true
 		if strings.HasPrefix(f.key, "osv-") {
-			rel = len(ecos[strings.TrimPrefix(f.key, "osv-")]) > 0
+			rel = len(ecos[strings.TrimPrefix(f.key, "osv-")]) > 0 || (f.key == "osv-almalinux" && len(ecos["rocky"]) > 0)
 		} else if f.key == "debian-tracker" {
 			rel = len(ecos["debian"]) > 0
 		}

@@ -60,6 +60,18 @@ func (a *Agent) reloadClient() error {
 	return nil
 }
 
+// Hostname returns the configured hostname override or the OS hostname.
+func (a *Agent) Hostname() string {
+	if a.cfg.Hostname != "" {
+		return a.cfg.Hostname
+	}
+	if a.id.Hostname != "" {
+		return a.id.Hostname
+	}
+	h, _ := os.Hostname()
+	return h
+}
+
 // ID returns the agent ID.
 func (a *Agent) ID() string { return a.id.AgentID }
 
@@ -82,7 +94,7 @@ func (a *Agent) Run(ctx context.Context) error {
 
 func (a *Agent) heartbeatLoop(ctx context.Context) {
 	interval := 15 * time.Second
-	host, _ := os.Hostname()
+	host := a.Hostname()
 	boot := bootTime(a.cfg.ProcRoot)
 	backoff := time.Second
 	for {

@@ -134,3 +134,13 @@ func TestNormalizeOSVEcosystem(t *testing.T) {
 		}
 	}
 }
+
+func TestRHELCrossSink(t *testing.T) {
+	m := &memSink{}
+	s := RHELCrossSink{Inner: m, AlmaWanted: map[string]bool{}, RockyMajor: map[string]bool{"9": true}}
+	_ = s.Affected(Affected{Ecosystem: "almalinux:9", Package: "java-1.8.0-openjdk", VulnID: "CVE-1", Fixed: "1:1.8.0.482.b08-1.el9.alma.1"})
+	_ = s.Affected(Affected{Ecosystem: "almalinux:8", Package: "x", VulnID: "CVE-2", Fixed: "1"})
+	if len(m.aff) != 1 || m.aff[0].Ecosystem != "rocky:9" || m.aff[0].Fixed != "1:1.8.0.482.b08-1.el9" {
+		t.Fatalf("%+v", m.aff)
+	}
+}

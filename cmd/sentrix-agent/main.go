@@ -75,7 +75,7 @@ func run() error {
 		if host == "" {
 			host, _ = os.Hostname()
 		}
-		id, err := agent.Enroll(ctx, cfg.StateDir, *srv, *tok, *fp, host, agent.MachineID())
+		id, err := agent.Enroll(ctx, cfg.StateDir, *srv, *tok, *fp, host, agent.MachineID(), *name)
 		if err != nil {
 			return err
 		}

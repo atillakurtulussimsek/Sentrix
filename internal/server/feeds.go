@@ -192,7 +192,24 @@ func (s *Server) SyncFeeds(ctx context.Context, force bool) error {
 		})
 	}
 	for _, distro := range []string{"ubuntu", "alpine", "rocky", "almalinux"} {
-		keys := ecos[distro]
+		keys := ecos[distro] // output ecosystems written by this feed
+		wanted := keys       // OSV ecosystems parsed from the export
+		var sinkWrap func(vuln.Sink) vuln.Sink
+		if distro == "almalinux" && len(ecos["rocky"]) > 0 {
+			keys, wanted = map[string]bool{}, map[string]bool{}
+			rocky := map[string]bool{}
+			for k := range ecos["almalinux"] {
+				keys[k], wanted[k] = true, true
+			}
+			for k := range ecos["rocky"] {
+				major := strings.TrimPrefix(k, "rocky:")
+				rocky[major], keys[k], wanted["almalinux:"+major] = true, true, true
+			}
+			almaWanted := ecos["almalinux"]
+			sinkWrap = func(in vuln.Sink) vuln.Sink {
+				return vuln.RHELCrossSink{Inner: in, AlmaWanted: almaWanted, RockyMajor: rocky}
+			}
+		}
 		if len(keys) == 0 {
 			continue
 		}
@@ -221,7 +238,11 @@ func (s *Server) SyncFeeds(ctx context.Context, force bool) error {
 			if err != nil {
 				return 0, "", err
 			}
-			n, err := vuln.ParseOSVZip(&zr.Reader, feed, keys, w)
+			var sink vuln.Sink = w
+			if sinkWrap != nil {
+				sink = sinkWrap(w)
+			}
+			n, err := vuln.ParseOSVZip(&zr.Reader, feed, wanted, sink)
 			if err != nil {
 				w.Rollback()
 				return 0, "", err
@@ -274,10 +295,9 @@ func (s *Server) RematchAll(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	cache := map[string]vuln.AffectedIndex{}
 	var errs []error
 	for id := range invs {
-		if err := s.rematchHost(ctx, id, cache); err != nil {
+		if err := s.rematchHost(ctx, id); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -285,7 +305,7 @@ func (s *Server) RematchAll(ctx context.Context) error {
 }
 
 // rematchHost matches one host's inventory and stores findings with risk scores.
-func (s *Server) rematchHost(ctx context.Context, hostID string, cache map[string]vuln.AffectedIndex) error {
+func (s *Server) rematchHost(ctx context.Context, hostID string) error {
 	inv, err := s.db.GetInventory(ctx, hostID)
 	if err != nil {
 		return err
@@ -295,16 +315,18 @@ func (s *Server) rematchHost(ctx context.Context, hostID string, cache map[strin
 		_, _, err := s.db.ReplaceFindings(ctx, hostID, nil)
 		return err
 	}
-	idx, ok := cache[eco]
-	if !ok {
-		if idx, err = s.db.AffectedIndex(ctx, eco); err != nil {
-			return err
-		}
-		if cache != nil {
-			cache[eco] = idx
+	pkgs, err := s.db.ListPackages(ctx, hostID, "")
+	if err != nil {
+		return err
+	}
+	keySet := map[string]bool{}
+	for _, p := range pkgs {
+		keySet[p.Name] = true
+		if p.SourceName != "" {
+			keySet[p.SourceName] = true
 		}
 	}
-	pkgs, err := s.db.ListPackages(ctx, hostID, "")
+	idx, err := s.db.AffectedIndex(ctx, eco, keysOf(keySet))
 	if err != nil {
 		return err
 	}
@@ -445,7 +467,7 @@ func (s *Server) enrichNVD(ctx context.Context) error {
 // afterInventory re-matches the host and triggers a feed sync when its ecosystem has
 // never been synced (new distribution in the fleet).
 func (s *Server) afterInventory(ctx context.Context, hostID string) {
-	if err := s.rematchHost(ctx, hostID, nil); err != nil {
+	if err := s.rematchHost(ctx, hostID); err != nil {
 		s.log.Warn("match host", "host", hostID, "err", err)
 	}
 	if !s.cfg.Feeds.Enabled {
@@ -456,8 +478,11 @@ func (s *Server) afterInventory(ctx context.Context, hostID string) {
 		return
 	}
 	feed := "osv-" + inv.OS.ID
-	if inv.OS.ID == "debian" {
+	switch inv.OS.ID {
+	case "debian":
 		feed = "debian-tracker"
+	case "rocky":
+		feed = "osv-almalinux" // Rocky hosts also use AlmaLinux advisories
 	}
 	if _, _, ok := vuln.Ecosystem(inv.OS); !ok {
 		return

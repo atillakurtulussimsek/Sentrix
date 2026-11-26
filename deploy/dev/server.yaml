@@ -8,4 +8,4 @@ offline_after: 30s
 heartbeat_interval: 5s
 dev_insecure_cookies: true
 feeds:
-  enabled: false
+  enabled: true   # downloads real feeds (Debian tracker, OSV, KEV, EPSS)
