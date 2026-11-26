@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -268,4 +269,35 @@ func (m *SQLMetrics) Prune(ctx context.Context, now time.Time, raw, minute, hour
 		m.cache = map[seriesKey]int64{}
 	}
 	return err
+}
+
+// LatestFleet returns recent last values of the named metrics for all hosts:
+// host → "name{labels}" → value.
+func (d *DB) LatestFleet(ctx context.Context, names ...string) (map[string]map[string]float64, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	q := `SELECT host_id, name, labels, last_val FROM series WHERE last_ts > ? AND name IN (?` + strings.Repeat(",?", len(names)-1) + `)`
+	args := []any{d.now().Add(-10 * time.Minute).Unix()}
+	for _, n := range names {
+		args = append(args, n)
+	}
+	rows, err := d.sql.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]map[string]float64{}
+	for rows.Next() {
+		var h, n, l string
+		var v float64
+		if err := rows.Scan(&h, &n, &l, &v); err != nil {
+			return nil, err
+		}
+		if out[h] == nil {
+			out[h] = map[string]float64{}
+		}
+		out[h][SeriesKey(n, l)] = v
+	}
+	return out, rows.Err()
 }

@@ -15,4 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Bounded on-disk agent buffer with replay; server ingestion with raw → 1 min → 1 h rollups and retention.
 - dpkg, RPM (EVR) and apk version comparators with table tests.
 - Linux acceptance test in CI.
+- Web UI (server-rendered, HTMX, Tailwind, uPlot): first-run wizard with disclaimer, login with argon2id, optional TOTP, CSRF protection, roles (admin/operator/viewer), dashboard, hosts list with search/filters, host detail with live SSE charts, users and enrolment-token settings, audit log page, dark/light theme.
+- Security headers (strict CSP), login rate limiting, secrets encryption key, i18n message catalog (en, partial tr).
+- `test/tools/fakefleet` demo fleet simulator.
 - Repository bootstrap: Go module, layout, Makefile, CI, lint config, licence, docs skeleton.

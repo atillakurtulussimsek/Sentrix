@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@source "./templates";
+@source "./static/app.js";
+@source "./static/charts.js";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer components {
+  .card { @apply rounded-lg border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900; }
+  .card-header { @apply flex items-center justify-between border-b border-zinc-100 px-5 py-3 dark:border-zinc-800; }
+  .card-header h2 { @apply text-sm font-semibold; }
+  .empty { @apply px-5 py-10 text-center text-sm text-zinc-500; }
+  .label { @apply text-sm font-medium text-zinc-700 dark:text-zinc-300; }
+  .input { @apply block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-xs outline-none placeholder:text-zinc-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 dark:border-zinc-700 dark:bg-zinc-900; }
+  .input-sm { @apply px-2 py-1 text-xs; }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-md bg-teal-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-teal-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-md border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 shadow-xs hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800; }
+  .btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-md bg-red-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-red-700; }
+  .table { @apply w-full text-left text-sm; }
+  .table th { @apply border-b border-zinc-200 px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800; }
+  .table td { @apply border-b border-zinc-100 px-5 py-3 align-middle dark:border-zinc-800/70; }
+  .table tbody tr:last-child td { @apply border-b-0; }
+  .table tbody tr:hover { @apply bg-zinc-50/70 dark:bg-zinc-800/30; }
+  .table-compact td, .table-compact th { @apply py-1.5; }
+  .badge { @apply inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300; }
+  .badge-online { @apply bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 ring-inset dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900; }
+  .badge-offline { @apply bg-red-50 text-red-700 ring-1 ring-red-200 ring-inset dark:bg-red-950/50 dark:text-red-300 dark:ring-red-900; }
+  .badge-revoked { @apply bg-zinc-200 text-zinc-600 line-through dark:bg-zinc-800; }
+  .badge-warn { @apply bg-amber-50 text-amber-800 ring-1 ring-amber-200 ring-inset dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900; }
+  .badge-muted { @apply bg-transparent text-zinc-500 ring-1 ring-zinc-200 ring-inset dark:ring-zinc-700; }
+  .sev-critical { @apply bg-red-600 text-white; }
+  .sev-high { @apply bg-orange-500 text-white; }
+  .sev-medium { @apply bg-amber-400 text-amber-950; }
+  .sev-low { @apply bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200; }
+  .sev-unknown { @apply bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200; }
+  .sev { @apply inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide; }
+  .risk { @apply inline-flex min-w-9 justify-center rounded-md px-1.5 py-0.5 text-xs font-bold tabular-nums; }
+  .risk-critical { @apply bg-red-600 text-white; }
+  .risk-high { @apply bg-orange-500 text-white; }
+  .risk-medium { @apply bg-amber-300 text-amber-950; }
+  .risk-low { @apply bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100; }
+  .dot { @apply inline-block h-2 w-2 shrink-0 rounded-full; }
+  .dot-ok { @apply bg-emerald-500; }
+  .dot-bad { @apply bg-red-500; }
+  .dot-warn { @apply bg-amber-500; }
+  .dot-info { @apply bg-sky-500; }
+  .stat-ok { @apply text-emerald-600 dark:text-emerald-400; }
+  .stat-bad { @apply text-red-600 dark:text-red-400; }
+  .stat-warn { @apply text-amber-600 dark:text-amber-400; }
+  .stat-muted { @apply text-zinc-400 dark:text-zinc-500; }
+  .code { @apply overflow-x-auto rounded-md bg-zinc-900 p-3 font-mono text-xs text-zinc-100 dark:bg-black; }
+  .tab-active { @apply border-teal-600 text-teal-700 dark:text-teal-300; }
+}
+
+.uplot { font-family: inherit; }
+.u-legend { font-size: 11px; }
+.dark .u-legend { color: #d4d4d8; }

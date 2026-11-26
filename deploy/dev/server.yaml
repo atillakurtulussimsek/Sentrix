@@ -1,9 +1,9 @@
-# Local development server config (plain HTTP UI on :8080, agent gateway on :8443).
+# Local development server config (plain HTTP UI on :18080, agent gateway on :18443; test admin: admin / devpassword123).
 data_dir: ./data/server
-listen: "127.0.0.1:8080"
-base_url: http://localhost:8080
-gateway_listen: "127.0.0.1:8443"
-gateway_url: https://127.0.0.1:8443
+listen: "127.0.0.1:18080"
+base_url: http://localhost:18080
+gateway_listen: "127.0.0.1:18443"
+gateway_url: https://127.0.0.1:18443
 offline_after: 30s
 heartbeat_interval: 5s
 dev_insecure_cookies: true

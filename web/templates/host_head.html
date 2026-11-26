@@ -1,0 +1,18 @@
+{{define "hosthead"}}
+<div class="mb-5">
+  <a href="/hosts" class="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">← {{t "nav.hosts"}}</a>
+  <div class="mt-2 flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-semibold tracking-tight">{{.Data.Host.Hostname}}</h1>
+    <span class="badge badge-{{.Data.Status}}">{{.Data.Status}}</span>
+    {{if .Data.Host.Group}}<span class="badge">{{.Data.Host.Group}}</span>{{end}}
+    {{range .Data.Host.Tags}}<span class="badge badge-muted">{{.}}</span>{{end}}
+  </div>
+  <p class="mt-1 text-sm text-zinc-500">{{with .Data.OS}}{{.}} · {{end}}agent {{.Data.Host.AgentVersion}} · last seen {{reltime .Data.Host.LastSeen}}</p>
+  <nav class="mt-4 flex gap-1 overflow-x-auto border-b border-zinc-200 text-sm dark:border-zinc-800">
+    {{$id := .Data.Host.ID}}{{$tab := .Data.Tab}}
+    {{range .Data.Tabs}}
+    <a href="/hosts/{{$id}}{{.Path}}" class="-mb-px whitespace-nowrap border-b-2 px-3 py-2 font-medium {{if eq .Key $tab}}border-teal-600 text-teal-700 dark:text-teal-300{{else}}border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100{{end}}">{{.Label}}{{if .Count}} <span class="ml-1 rounded-full bg-zinc-100 px-1.5 text-xs dark:bg-zinc-800">{{.Count}}</span>{{end}}</a>
+    {{end}}
+  </nav>
+</div>
+{{end}}

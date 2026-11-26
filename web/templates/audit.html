@@ -1,0 +1,18 @@
+{{define "title"}}{{t "nav.audit"}}{{end}}
+{{define "content"}}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-semibold tracking-tight">{{t "nav.audit"}}</h1>
+  <form class="flex gap-2"><input type="search" name="target" value="{{.Data.Target}}" placeholder="Filter by target ID" class="input w-72"><button class="btn-secondary">Filter</button></form>
+</div>
+<div class="card overflow-x-auto">
+  {{if .Data.Entries}}
+  <table class="table table-compact">
+    <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Detail</th></tr></thead>
+    <tbody>{{range .Data.Entries}}
+    <tr><td class="whitespace-nowrap tabular-nums text-zinc-500">{{fmtTime .TS}}</td><td class="whitespace-nowrap">{{.Actor}}</td><td><code class="text-xs">{{.Action}}</code></td>
+      <td class="font-mono text-xs"><a href="/audit?target={{.Target}}" class="hover:underline">{{.Target}}</a></td><td class="max-w-xl truncate text-zinc-600 dark:text-zinc-400" title="{{.Detail}}">{{.Detail}}</td></tr>
+    {{end}}</tbody>
+  </table>
+  {{else}}<div class="empty">No audit entries.</div>{{end}}
+</div>
+{{end}}

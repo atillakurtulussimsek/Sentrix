@@ -1,0 +1,44 @@
+{{define "title"}}{{t "nav.hosts"}}{{end}}
+{{define "content"}}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-2xl font-semibold tracking-tight">{{t "nav.hosts"}}</h1>
+  {{if can .User "admin"}}<a href="/settings/enrollment" class="btn-primary">Add host</a>{{end}}
+</div>
+<form class="mb-4 flex flex-wrap gap-2" hx-get="/hosts" hx-target="#host-table" hx-select="#host-table" hx-swap="outerHTML" hx-trigger="input changed delay:250ms from:input, change from:select" hx-push-url="true">
+  <input type="search" name="q" value="{{.Data.Query}}" placeholder="{{t "hosts.search"}}" class="input max-w-sm">
+  <select name="status" class="input w-auto">
+    <option value="">All statuses</option>
+    {{range list "online" "offline" "revoked"}}<option value="{{.}}" {{if eq . $.Data.Status}}selected{{end}}>{{.}}</option>{{end}}
+  </select>
+  <select name="group" class="input w-auto">
+    <option value="">All groups</option>
+    {{range .Data.Groups}}<option value="{{.}}" {{if eq . $.Data.Group}}selected{{end}}>{{.}}</option>{{end}}
+  </select>
+</form>
+<div id="host-table" class="card overflow-x-auto">
+  {{if .Data.Hosts}}
+  <table class="table">
+    <thead><tr><th>Host</th><th>Status</th><th>OS</th><th>Group / tags</th><th class="text-right">CPU</th><th class="text-right">Mem</th><th class="text-right">Disk</th><th class="text-right">Updates</th><th class="text-right">Risk</th></tr></thead>
+    <tbody>
+    {{range .Data.Hosts}}
+    <tr>
+      <td><a href="/hosts/{{.ID}}" class="font-medium hover:underline">{{.Hostname}}</a>
+        {{if .RebootRequired}}<span class="badge badge-warn ml-1" title="Reboot required">reboot</span>{{end}}
+        <div class="text-xs text-zinc-500">seen {{reltime .LastSeen}}</div></td>
+      <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+      <td class="text-zinc-600 dark:text-zinc-400">{{.OS}}</td>
+      <td>{{if .Group}}<span class="badge">{{.Group}}</span>{{end}}{{range .Tags}} <span class="badge badge-muted">{{.}}</span>{{end}}</td>
+      <td class="text-right tabular-nums">{{pct .CPU}}</td>
+      <td class="text-right tabular-nums">{{pct .Mem}}</td>
+      <td class="text-right tabular-nums {{if gt .Disk 90.0}}text-red-600 font-semibold{{end}}">{{pct .Disk}}</td>
+      <td class="text-right tabular-nums">{{if .Updates}}{{.Updates}}{{if .SecUpdates}} <span class="text-red-600">({{.SecUpdates}} sec)</span>{{end}}{{else}}<span class="text-zinc-400">0</span>{{end}}</td>
+      <td class="text-right">{{if .Risk}}<span class="risk risk-{{riskclass .Risk}}">{{printf "%.0f" .Risk}}</span>{{else}}<span class="text-zinc-400">–</span>{{end}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">{{if .Data.Query}}No hosts match “{{.Data.Query}}”.{{else}}{{t "hosts.empty"}}{{end}}</div>
+  {{end}}
+</div>
+{{end}}

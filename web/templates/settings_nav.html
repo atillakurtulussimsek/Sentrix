@@ -1,0 +1,9 @@
+{{define "settingsnav"}}
+<h1 class="mb-4 text-2xl font-semibold tracking-tight">{{t "nav.settings"}}</h1>
+<nav class="mb-6 flex gap-1 overflow-x-auto border-b border-zinc-200 text-sm dark:border-zinc-800">
+  {{$cur := .Data.Section}}
+  {{range .Data.Sections}}
+  <a href="{{.Href}}" class="-mb-px whitespace-nowrap border-b-2 px-3 py-2 font-medium {{if eq .Key $cur}}border-teal-600 text-teal-700 dark:text-teal-300{{else}}border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100{{end}}">{{.Label}}</a>
+  {{end}}
+</nav>
+{{end}}

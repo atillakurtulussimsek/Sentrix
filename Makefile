@@ -43,7 +43,7 @@ e2e:
 
 # Regenerates the committed Tailwind stylesheet (needs Node.js).
 css:
-	npx --yes @tailwindcss/cli@4 -i web/tailwind.css -o web/static/app.css --minify
+	npm install --no-audit --no-fund && npx tailwindcss -i web/tailwind.css -o web/static/app.css --minify
 
 clean:
 	rm -rf $(BIN) dist coverage.out

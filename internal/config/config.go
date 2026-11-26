@@ -35,6 +35,8 @@ type Server struct {
 	Retention Retention `yaml:"retention"`
 	Feeds     Feeds     `yaml:"feeds"`
 	LogLevel  string    `yaml:"log_level" env:"SENTRIX_LOG_LEVEL"`
+	// UI language (message catalog in web/i18n): "en" (default) or "tr".
+	Language string `yaml:"language" env:"SENTRIX_LANGUAGE"`
 	// Insecure cookies for plain-HTTP local development only.
 	DevInsecureCookies bool `yaml:"dev_insecure_cookies" env:"SENTRIX_DEV_INSECURE_COOKIES"`
 }
@@ -84,6 +86,7 @@ func DefaultServer() Server {
 			OfflineAfter: 72 * time.Hour,
 		},
 		LogLevel: "info",
+		Language: "en",
 	}
 }
 

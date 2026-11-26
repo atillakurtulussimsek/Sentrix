@@ -15,11 +15,15 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/atillakurtulussimsek/Sentrix/internal/auth"
 	"github.com/atillakurtulussimsek/Sentrix/internal/config"
+	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
 	"github.com/atillakurtulussimsek/Sentrix/internal/pki"
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
+	"github.com/atillakurtulussimsek/Sentrix/web"
 )
 
 // Server is the Sentrix control plane.
@@ -34,6 +38,14 @@ type Server struct {
 
 	mu          sync.Mutex
 	onlineCache map[string]bool
+
+	cat       *i18n.Catalog
+	rend      *renderer
+	box       *auth.SecretBox
+	setupMu   sync.Mutex
+	setupDone atomic.Bool
+	loginIP   *auth.Limiter
+	loginUser *auth.Limiter
 }
 
 type job struct {
@@ -48,10 +60,29 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load CA: %w", err)
 	}
-	s := &Server{cfg: cfg, db: db, ca: ca, log: log, hub: NewHub(), onlineCache: map[string]bool{}, mets: db.Metrics()}
+	cat, err := i18n.Load(web.I18n, "i18n")
+	if err != nil {
+		return nil, fmt.Errorf("load i18n: %w", err)
+	}
+	rend, err := newRenderer(cat, cfg.Language)
+	if err != nil {
+		return nil, err
+	}
+	key, err := auth.LoadOrCreateKey(filepath.Join(cfg.DataDir, "secret.key"))
+	if err != nil {
+		return nil, err
+	}
+	box, err := auth.NewSecretBox(key)
+	if err != nil {
+		return nil, err
+	}
+	s := &Server{cfg: cfg, db: db, ca: ca, log: log, hub: NewHub(), onlineCache: map[string]bool{}, mets: db.Metrics(),
+		cat: cat, rend: rend, box: box,
+		loginIP: auth.NewLimiter(20, 15*time.Minute), loginUser: auth.NewLimiter(5, 15*time.Minute)}
 	s.jobs = append(s.jobs,
 		job{"presence", 5 * time.Second, s.checkPresence},
 		job{"rollup", time.Minute, func(ctx context.Context) error { return s.mets.Rollup(ctx, time.Now()) }},
+		job{"sessions", time.Hour, s.db.PruneSessions},
 		job{"retention", time.Hour, func(ctx context.Context) error {
 			r := s.cfg.Retention
 			return s.mets.Prune(ctx, time.Now(), r.Raw, r.Minute, r.Hour)

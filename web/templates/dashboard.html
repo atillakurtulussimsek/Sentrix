@@ -1,0 +1,69 @@
+{{define "title"}}{{t "nav.dashboard"}}{{end}}
+{{define "content"}}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Fleet overview</h1>
+    <p class="text-sm text-zinc-500">{{.Data.Total}} hosts · updated <span data-reltime="{{.Data.Now.Unix}}">just now</span></p>
+  </div>
+  {{if not .Data.FeedSync.IsZero}}<p class="text-xs text-zinc-500">Vulnerability data synced {{reltime .Data.FeedSync}}</p>{{end}}
+</div>
+
+<div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+  {{template "stat" (dict "Label" "Online" "Value" .Data.Online "Tone" "ok" "Href" "/hosts?status=online")}}
+  {{template "stat" (dict "Label" "Offline" "Value" .Data.Offline "Tone" (ifz .Data.Offline "muted" "bad") "Href" "/hosts?status=offline")}}
+  {{template "stat" (dict "Label" "Critical CVEs" "Value" .Data.Critical "Tone" (ifz .Data.Critical "muted" "bad") "Href" "/vulns?severity=critical")}}
+  {{template "stat" (dict "Label" "Known exploited" "Value" .Data.KEV "Tone" (ifz .Data.KEV "muted" "bad") "Href" "/vulns?kev=1")}}
+  {{template "stat" (dict "Label" "Pending updates" "Value" .Data.Updates "Tone" (ifz .Data.Updates "muted" "warn") "Href" "/hosts?sort=updates")}}
+  {{template "stat" (dict "Label" "Reboot pending" "Value" .Data.Reboots "Tone" (ifz .Data.Reboots "muted" "warn") "Href" "/hosts?reboot=1")}}
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <section class="card lg:col-span-2">
+    <div class="card-header"><h2>Needs attention</h2></div>
+    {{if .Data.Attention}}
+    <ul class="divide-y divide-zinc-100 dark:divide-zinc-800">
+      {{range .Data.Attention}}
+      <li class="flex items-center gap-3 px-5 py-3 text-sm">
+        <span class="dot dot-{{.Tone}}"></span>
+        <a href="{{.Href}}" class="font-medium hover:underline">{{.Host}}</a>
+        <span class="flex-1 truncate text-zinc-600 dark:text-zinc-400">{{.Text}}</span>
+        <span class="text-xs text-zinc-400">{{.When}}</span>
+      </li>
+      {{end}}
+    </ul>
+    {{else}}
+    <div class="empty">Nothing needs your attention right now.</div>
+    {{end}}
+  </section>
+  <section class="card">
+    <div class="card-header"><h2>Highest risk hosts</h2></div>
+    {{if .Data.TopRisk}}
+    <ul class="divide-y divide-zinc-100 dark:divide-zinc-800">
+      {{range .Data.TopRisk}}
+      <li class="flex items-center justify-between px-5 py-3 text-sm">
+        <a href="/hosts/{{.ID}}/vulns" class="font-medium hover:underline">{{.Hostname}}</a>
+        <span class="risk risk-{{riskclass .Risk}}">{{printf "%.0f" .Risk}}</span>
+      </li>
+      {{end}}
+    </ul>
+    {{else}}
+    <div class="empty">No vulnerability findings yet.</div>
+    {{end}}
+  </section>
+</div>
+
+{{if not .Data.Total}}
+<section class="card mt-6 p-6">
+  <h2 class="text-base font-semibold">Add your first server</h2>
+  <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{{t "hosts.empty"}}</p>
+  <a href="/settings/enrollment" class="btn-primary mt-4 inline-flex">Create enrolment token</a>
+</section>
+{{end}}
+{{end}}
+
+{{define "stat"}}
+<a href="{{.Href}}" class="card block p-4 transition hover:border-zinc-300 dark:hover:border-zinc-700">
+  <div class="text-xs font-medium uppercase tracking-wide text-zinc-500">{{.Label}}</div>
+  <div class="mt-1 text-3xl font-semibold tabular-nums stat-{{.Tone}}">{{.Value}}</div>
+</a>
+{{end}}

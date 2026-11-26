@@ -1,0 +1,30 @@
+{{define "title"}}Users{{end}}
+{{define "content"}}
+{{template "settingsnav" .}}
+<div class="grid gap-6 lg:grid-cols-3">
+  <form method="post" action="/settings/users" class="card space-y-4 p-5">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <h2 class="font-semibold">Add user</h2>
+    <label class="block"><span class="label">Username</span><input name="username" required class="input mt-1" autocomplete="off"></label>
+    <label class="block"><span class="label">Password</span><input name="password" type="password" minlength="10" required class="input mt-1" autocomplete="new-password"></label>
+    <label class="block"><span class="label">Role</span>
+      <select name="role" class="input mt-1"><option value="viewer">viewer — read only</option><option value="operator">operator — plan &amp; apply patches</option><option value="admin">admin — everything</option></select></label>
+    <button class="btn-primary">Create user</button>
+  </form>
+  <section class="card lg:col-span-2">
+    <div class="card-header"><h2>Users</h2></div>
+    <table class="table">
+      <thead><tr><th>User</th><th>Role</th><th>2FA</th><th>Last login</th><th></th></tr></thead>
+      <tbody>{{range .Data.Users}}
+      <tr><td class="font-medium">{{.Username}}{{if .Disabled}} <span class="badge badge-muted">disabled</span>{{end}}</td>
+        <td><form method="post" action="/settings/users/{{.ID}}/role" class="flex gap-2"><input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <select name="role" class="input input-sm w-auto" data-autosubmit>{{$r := .Role}}{{range list "viewer" "operator" "admin"}}<option {{if eq . $r}}selected{{end}}>{{.}}</option>{{end}}</select></form></td>
+        <td>{{if .TOTPSecret}}<span class="badge badge-online">on</span>{{else}}<span class="badge badge-muted">off</span>{{end}}</td>
+        <td>{{if .LastLogin.IsZero}}never{{else}}{{reltime .LastLogin}}{{end}}</td>
+        <td class="text-right">{{if ne .ID $.User.ID}}<form method="post" action="/settings/users/{{.ID}}/toggle" class="inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-zinc-600 hover:underline dark:text-zinc-400">{{if .Disabled}}enable{{else}}disable{{end}}</button></form>
+          <form method="post" action="/settings/users/{{.ID}}/delete" class="ml-2 inline" data-confirm="Delete user {{.Username}}?"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-red-600 hover:underline">delete</button></form>{{end}}</td></tr>
+      {{end}}</tbody>
+    </table>
+  </section>
+</div>
+{{end}}

@@ -55,3 +55,15 @@ Short ADR entries: date, decision, alternatives, reason.
 - **Decision:** `series(host, name, labels)` + `metrics_raw/1m/1h` (WITHOUT ROWID, PK series+ts).
   Rollups are watermark-driven with a 10-bucket overlap so late (buffer-replayed) data is re-aggregated.
 - **Reason:** compact, idempotent, easily replaced by a TSDB behind `store.MetricStore`.
+
+## 2026-11-27 — UI build pipeline
+- **Decision:** Tailwind v4 CLI via a build-only `package.json`; compiled `web/static/app.css` is committed so
+  `go build` needs no Node. htmx 2 and uPlot 1.6 are vendored into `web/static/vendor` (licences in NOTICE).
+- **Reason:** single static binary, reproducible builds on machines without Node.
+
+## 2026-11-27 — Sessions and CSRF
+- **Decision:** server-side sessions (random 256-bit ID, only SHA-256 stored), 12 h idle / 7 d absolute,
+  synchroniser CSRF token per session; double-submit cookie before login; Origin check as defence in depth.
+  API calls with `Authorization: Bearer` tokens are CSRF-exempt (not ambient credentials). Strict CSP
+  (`script-src 'self'`, no inline handlers).
+- **Reason:** OWASP ASVS L1 V3/V4 basics with no extra dependencies.

@@ -1,0 +1,9 @@
+{
+  "name": "sentrix-ui-build",
+  "private": true,
+  "description": "Build-time only: compiles web/tailwind.css into web/static/app.css (committed).",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "tailwindcss": "^4.1.0"
+  }
+}
