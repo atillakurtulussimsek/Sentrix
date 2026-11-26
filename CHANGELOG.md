@@ -18,4 +18,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Web UI (server-rendered, HTMX, Tailwind, uPlot): first-run wizard with disclaimer, login with argon2id, optional TOTP, CSRF protection, roles (admin/operator/viewer), dashboard, hosts list with search/filters, host detail with live SSE charts, users and enrolment-token settings, audit log page, dark/light theme.
 - Security headers (strict CSP), login rate limiting, secrets encryption key, i18n message catalog (en, partial tr).
 - `test/tools/fakefleet` demo fleet simulator.
+- Inventory: OS/kernel/arch/virtualization, dpkg/rpm/apk packages (with source packages), apt/dnf/apk available updates with security classification, listening ports with owning process, container images; `sentrix-agent inventory --json`; host Inventory and Updates tabs.
 - Repository bootstrap: Go module, layout, Makefile, CI, lint config, licence, docs skeleton.
