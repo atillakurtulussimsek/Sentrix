@@ -1,5 +1,5 @@
 # Progress
-Current milestone: M9 — Hardening & polish
+Current milestone: M10 — Packaging & docs
 Last updated: 2026-11-27
 
 ## Milestones
@@ -12,7 +12,7 @@ Last updated: 2026-11-27
 - [x] M6 Actions & patch orchestration — CI `patch-containers` via `sentrix` CLI: security-only plan on debian:bookworm-20240110 + rockylinux:9.3, dry run 13/68 package changes, applied, CVEs 199→148 and 615→2, audit trail complete; executor test proves unknown/raw actions are rejected before any program runs; policy outside window creates nothing (unit test)
 - [ ] M7 Alerts & notifications
 - [x] M8 Proxmox snapshot hook & generic webhook hook — httptest-mocked PVE: snapshot created and audited before the patch command; snapshot failure → host failed, no patch command, plan failed (`TestProxmoxSnapshot*`)
-- [ ] M9 Hardening & polish
+- [x] M9 Hardening & polish — ASVS L1 self-review in docs/security-review.md (5 findings fixed); TOTP 2FA with QR, password change revokes sessions, scoped API tokens UI, rate limits, body limits, SECURITY.md; tests `TestAPITokenScopes`, `TestPasswordChangeRevokesSessions`, `TestLoginRateLimitAndMFA`
 - [ ] M10 Packaging & docs → v0.1.0
 
 ## Blocked
@@ -21,4 +21,4 @@ Last updated: 2026-11-27
 
 ## Next up
 - M7: confirm alert-disk CI step.
-- M9: hardening (2FA UI, API token UI, account page), SECURITY.md, ASVS L1 review, first-run polish.
+- M10: Dockerfile, compose, install.sh, systemd, nfpm, GoReleaser, docs, screenshots, tag v0.1.0 locally.

@@ -244,3 +244,57 @@ func TestSecurityHeaders(t *testing.T) {
 		}
 	}
 }
+
+func TestAPITokenScopes(t *testing.T) {
+	s, ts := newUI(t)
+	mkUser(t, s, "olga", store.RoleOperator)
+	u, _ := s.db.GetUserByName(context.Background(), "olga")
+	read := GenerateToken("sxa_")
+	op := GenerateToken("sxa_")
+	_, _ = s.db.CreateAPIToken(context.Background(), store.HashToken(read), u.ID, "r", "read", 0)
+	_, _ = s.db.CreateAPIToken(context.Background(), store.HashToken(op), u.ID, "o", "admin", 0) // capped to operator by role
+	call := func(tok, method, path, body string) int {
+		req, _ := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+tok)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+	if c := call(read, "GET", "/api/v1/hosts", ""); c != 200 {
+		t.Fatalf("read token GET: %d", c)
+	}
+	if c := call(read, "POST", "/api/v1/plans", `{"scope":"security","hosts":["x"]}`); c != http.StatusForbidden {
+		t.Fatalf("read token created plan: %d", c)
+	}
+	if c := call(op, "POST", "/api/v1/plans", `{"scope":"security","hosts":["nope"]}`); c != http.StatusBadRequest { // allowed, but no hosts
+		t.Fatalf("operate token POST: %d", c)
+	}
+	if c := call(op, "GET", "/settings/users", ""); c != http.StatusForbidden {
+		t.Fatalf("token scope above role: %d", c)
+	}
+	if c := call("sxa_wrong", "GET", "/api/v1/hosts", ""); c != http.StatusUnauthorized {
+		t.Fatalf("bad token: %d", c)
+	}
+}
+
+func TestPasswordChangeRevokesSessions(t *testing.T) {
+	s, ts := newUI(t)
+	mkUser(t, s, "alice", store.RoleViewer)
+	a1 := client(t, ts)
+	a1.login("alice")
+	a2 := client(t, ts)
+	a2.login("alice")
+	tok := a1.csrf("/settings/account")
+	if code, _ := a1.post("/settings/account/password", url.Values{"csrf": {tok}, "current": {"password-1234"}, "new": {"new-password-99"}, "new2": {"new-password-99"}}); code != http.StatusSeeOther {
+		t.Fatalf("change: %d", code)
+	}
+	if code, _, _ := a1.get("/hosts"); code != 200 {
+		t.Fatalf("current session lost: %d", code)
+	}
+	if _, _, loc := a2.get("/hosts"); !strings.HasPrefix(loc, "/login") {
+		t.Fatalf("other session still valid: %s", loc)
+	}
+}

@@ -1,0 +1,35 @@
+{{define "title"}}My account{{end}}
+{{define "content"}}
+{{template "settingsnav" .}}
+<div class="grid gap-6 lg:grid-cols-2">
+  <form method="post" action="/settings/account/password" class="card space-y-3 p-5">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <h2 class="text-sm font-semibold">Change password</h2>
+    <p class="text-xs text-zinc-500">Signed in as <b>{{.User.Username}}</b> ({{.User.Role}}). Changing the password signs out your other sessions.</p>
+    <label class="block"><span class="label">Current password</span><input name="current" type="password" required autocomplete="current-password" class="input mt-1"></label>
+    <label class="block"><span class="label">New password (min. 10 characters)</span><input name="new" type="password" required minlength="10" autocomplete="new-password" class="input mt-1"></label>
+    <label class="block"><span class="label">Repeat new password</span><input name="new2" type="password" required minlength="10" autocomplete="new-password" class="input mt-1"></label>
+    <button class="btn-primary">Change password</button>
+  </form>
+  <section class="card space-y-3 p-5">
+    <h2 class="text-sm font-semibold">Two-factor authentication (TOTP)</h2>
+    {{if .Data.HasTOTP}}
+      <p class="text-sm"><span class="badge badge-online">enabled</span> Sign-in requires a code from your authenticator app.</p>
+      <form method="post" action="/settings/account/totp/disable" class="space-y-2">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <label class="block"><span class="label">Password</span><input name="current" type="password" required class="input mt-1" autocomplete="current-password"></label>
+        <button class="btn-secondary">Disable 2FA</button>
+      </form>
+    {{else}}
+      <p class="text-sm text-zinc-600 dark:text-zinc-400">Scan the code with an authenticator app (Aegis, Google Authenticator, 1Password…), then enter the 6-digit code to confirm.</p>
+      {{with .Data.QR}}<img src="{{.}}" alt="TOTP QR code" class="rounded-md bg-white p-2" width="200" height="200">{{end}}
+      <p class="text-xs text-zinc-500">Manual key: <code class="break-all font-mono">{{.Data.Secret}}</code></p>
+      <form method="post" action="/settings/account/totp" class="flex gap-2">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <input name="code" inputmode="numeric" pattern="[0-9]{6}" required placeholder="123456" class="input max-w-40 tracking-widest" autocomplete="one-time-code">
+        <button class="btn-primary">Enable 2FA</button>
+      </form>
+    {{end}}
+  </section>
+</div>
+{{end}}

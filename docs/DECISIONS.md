@@ -92,3 +92,9 @@ Short ADR entries: date, decision, alternatives, reason.
   into `patch_packages` (apk has no security metadata). The agent executes only allow-listed programs with
   validated argv; `allow_patching: false` makes an agent read-only (dry runs still allowed).
 - **Dependency:** `github.com/robfig/cron/v3` for maintenance-window cron parsing (CRON_TZ support).
+
+## 2026-11-27 — Hardening choices (M9)
+- `rsc.io/qr` (tiny, no transitive deps) renders the TOTP enrolment QR code as an inline PNG (`img-src data:`).
+- Cookies are `Secure` whenever `base_url` is https; plain-HTTP installs keep working but log a warning.
+- Per-IP limiter shared for login, bearer-token and enrolment failures; per-user limiter for password/TOTP.
+- Password minimum is 10 characters (accepted deviation from ASVS 2.1.1, see docs/security-review.md).

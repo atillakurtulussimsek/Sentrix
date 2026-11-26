@@ -183,6 +183,9 @@ func (s *Server) Run(ctx context.Context) error {
 			errCh <- ui.Serve(uiLn)
 		}
 	}()
+	if !s.secureCookies() && !s.cfg.DevInsecureCookies {
+		s.log.Warn("base_url is plain http: session cookies are not marked Secure; serve the UI over HTTPS in production")
+	}
 	s.log.Info("sentrix server started", "ui", uiLn.Addr().String(), "gateway", gwLn.Addr().String(), "ca_fingerprint", s.ca.Fingerprint())
 
 	jobCtx, cancelJobs := context.WithCancel(ctx)

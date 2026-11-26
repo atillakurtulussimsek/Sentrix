@@ -21,7 +21,7 @@ import (
 // UIHandler returns the web UI + REST API handler.
 func (s *Server) UIHandler() http.Handler {
 	r := chi.NewRouter()
-	r.Use(s.accessLog, securityHeaders)
+	r.Use(s.accessLog, securityHeaders, limitBody)
 	r.Get("/healthz", s.handleHealth)
 	static, _ := fs.Sub(web.Static, "static")
 	r.Handle("/static/*", http.StripPrefix("/static/", cacheStatic(http.FileServer(http.FS(static)))))
@@ -128,6 +128,8 @@ func (s *Server) nav(r *http.Request, a *authInfo) []navItem {
 		items = append(items,
 			navItem{Href: "/audit", Label: s.t("nav.audit"), Icon: iconAudit, Active: active("/audit")},
 			navItem{Href: "/settings", Label: s.t("nav.settings"), Icon: iconSettings, Active: active("/settings")})
+	} else if a != nil {
+		items = append(items, navItem{Href: "/settings/account", Label: s.t("nav.settings"), Icon: iconSettings, Active: active("/settings")})
 	}
 	return items
 }

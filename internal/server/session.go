@@ -42,7 +42,11 @@ func randToken(n int) string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
-func (s *Server) secureCookies() bool { return !s.cfg.DevInsecureCookies }
+// secureCookies marks cookies Secure unless the UI is served over plain HTTP (base_url
+// http://…) or dev_insecure_cookies is set; browsers drop Secure cookies on http origins.
+func (s *Server) secureCookies() bool {
+	return !s.cfg.DevInsecureCookies && !strings.HasPrefix(strings.ToLower(s.cfg.BaseURL), "http://")
+}
 
 func (s *Server) setCookie(w http.ResponseWriter, name, value string, maxAge int) {
 	// Secure is only disabled with dev_insecure_cookies (plain-HTTP local development).

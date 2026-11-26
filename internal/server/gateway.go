@@ -98,6 +98,10 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 
 func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
+	if !s.loginIP.Allowed("enroll:" + clientIP(r)) {
+		http.Error(w, "too many failed enrolment attempts", http.StatusTooManyRequests)
+		return
+	}
 	var req protocol.EnrollRequest
 	if err := decodeJSON(r, &req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -118,6 +122,7 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 		CertSerial: cert.SerialNumber.String(), CertNotAfter: cert.NotAfter,
 	})
 	if errors.Is(err, store.ErrTokenInvalid) {
+		s.loginIP.Fail("enroll:" + clientIP(r))
 		s.log.Warn("enrolment rejected", "hostname", req.Hostname, "remote", r.RemoteAddr)
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return

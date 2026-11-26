@@ -12,17 +12,20 @@ import (
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
 )
 
-type settingsSection struct{ Key, Label, Href string }
+type settingsSection struct {
+	Key, Label, Href string
+	Admin            bool
+}
 
 var settingsSections = []settingsSection{
-	{"users", "Users", "/settings/users"},
-	{"enrollment", "Enrolment", "/settings/enrollment"},
-	{"channels", "Notification channels", "/settings/channels"},
-	{"policies", "Patch policies", "/settings/policies"},
-	{"hooks", "Snapshot hooks", "/settings/hooks"},
-	{"feeds", "Vulnerability feeds", "/settings/feeds"},
-	{"tokens", "API tokens", "/settings/tokens"},
-	{"account", "My account", "/settings/account"},
+	{"users", "Users", "/settings/users", true},
+	{"enrollment", "Enrolment", "/settings/enrollment", true},
+	{"channels", "Notification channels", "/settings/channels", true},
+	{"policies", "Patch policies", "/settings/policies", true},
+	{"hooks", "Snapshot hooks", "/settings/hooks", true},
+	{"feeds", "Vulnerability feeds", "/settings/feeds", true},
+	{"tokens", "API tokens", "/settings/tokens", false},
+	{"account", "My account", "/settings/account", false},
 }
 
 func settingsData(section string, extra map[string]any) map[string]any {

@@ -59,12 +59,26 @@ func (s *Server) accessLog(next http.Handler) http.Handler {
 	})
 }
 
+// limitBody caps request bodies for the UI/API.
+func limitBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+		next.ServeHTTP(w, r)
+	})
+}
+
 // identify attaches session or API-token identity (if any) to the request.
 func (s *Server) identify(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if ah := r.Header.Get("Authorization"); strings.HasPrefix(ah, "Bearer ") {
+			ip := clientIP(r)
+			if !s.loginIP.Allowed("bearer:" + ip) {
+				writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many failed attempts"})
+				return
+			}
 			tok, u, err := s.db.LookupAPIToken(r.Context(), store.HashToken(strings.TrimPrefix(ah, "Bearer ")))
 			if err != nil || u.Disabled {
+				s.loginIP.Fail("bearer:" + ip)
 				writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid API token"})
 				return
 			}
