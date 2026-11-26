@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-27
+
+First public release: monitoring, inventory, vulnerability detection, patch orchestration and alerting
+for small Linux fleets in a single self-hosted server plus a small static agent.
+
+### Highlights
+- Outbound-only agents with mutual TLS and a closed set of typed actions — no remote shell.
+- Distro-aware CVE matching (Debian tracker, OSV for Ubuntu/Alpine/Rocky/AlmaLinux, KEV, EPSS, NVD) with an explained risk score.
+- Patch plans with mandatory dry run, approval, canary rollout, reboots, verification, Proxmox snapshots, maintenance-window policies.
+- Alerts to email, Telegram, Discord, Slack, ntfy and webhooks; daily digest.
+- Docker image, docker-compose quick start, install.sh one-liner, .deb/.rpm packages, `sentrix` CLI.
+
+### Verified
+- CI acceptance on real Linux and distro containers: enrolment/presence, collectors + rollups (agent RSS ~14 MB),
+  inventory identical to native tools (Debian/Ubuntu/Rocky/Alpine), live-feed CVE detection and disappearance after
+  upgrade, security-only patch plan on Debian + Rocky via CLI, disk-threshold alert lifecycle via webhook, README
+  quick start (host visible and scanned in ~100 s).
+
+### Known limitations
+- SQLite only (PostgreSQL planned); RHEL/Fedora/SUSE have no vulnerability source yet.
+- The UI listener is plain HTTP by default — run it behind an HTTPS reverse proxy.
+- Turkish UI translation is partial.
+
 ### Added
 - Agent protocol with a closed, strictly validated action set (no remote shell).
 - Internal CA, one-time enrolment tokens with CA fingerprint pinning, mTLS agent gateway, certificate revocation and renewal.
@@ -25,3 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Pre-patch snapshot hooks: Proxmox VE (API token, QEMU and LXC, task polling, TLS fingerprint pinning) and generic HMAC-signed webhook; a failed required snapshot aborts that host before any package changes; hooks settings page with connection test; per-host Proxmox node/VM ID mapping.
 - Hardening: TOTP 2FA enrolment with QR code, password change (revokes other sessions), scoped API token management UI, per-IP limits for bearer tokens and enrolment, 2 MiB request limit, Secure cookies derived from `base_url`, SECURITY.md and OWASP ASVS L1 self-review.
 - Repository bootstrap: Go module, layout, Makefile, CI, lint config, licence, docs skeleton.
+
+[Unreleased]: https://github.com/atillakurtulussimsek/Sentrix/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/atillakurtulussimsek/Sentrix/releases/tag/v0.1.0
