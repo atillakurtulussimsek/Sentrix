@@ -1,5 +1,5 @@
 # Progress
-Current milestone: M7 — Alerts & notifications
+Current milestone: M9 — Hardening & polish
 Last updated: 2026-11-27
 
 ## Milestones
@@ -11,7 +11,7 @@ Last updated: 2026-11-27
 - [x] M5 Vulnerability engine — CI `vuln-container` (live feeds): debian:bookworm-20240110 glibc 47/47 CVEs identical to tracker+dpkg oracle; CVE-2023-6246 (fixed 2.36-9+deb12u4) disappears after upgrade; golden feed tests + lifecycle test
 - [x] M6 Actions & patch orchestration — CI `patch-containers` via `sentrix` CLI: security-only plan on debian:bookworm-20240110 + rockylinux:9.3, dry run 13/68 package changes, applied, CVEs 199→148 and 615→2, audit trail complete; executor test proves unknown/raw actions are rejected before any program runs; policy outside window creates nothing (unit test)
 - [ ] M7 Alerts & notifications
-- [ ] M8 Proxmox snapshot hook & generic webhook hook
+- [x] M8 Proxmox snapshot hook & generic webhook hook — httptest-mocked PVE: snapshot created and audited before the patch command; snapshot failure → host failed, no patch command, plan failed (`TestProxmoxSnapshot*`)
 - [ ] M9 Hardening & polish
 - [ ] M10 Packaging & docs → v0.1.0
 
@@ -20,4 +20,5 @@ Last updated: 2026-11-27
 - Docker is not installed on the build host: `make e2e` (multi-distro containers) cannot be executed here.
 
 ## Next up
-- M7: verify alert-disk CI step; then M8 Proxmox snapshot + webhook hooks.
+- M7: confirm alert-disk CI step.
+- M9: hardening (2FA UI, API token UI, account page), SECURITY.md, ASVS L1 review, first-run polish.

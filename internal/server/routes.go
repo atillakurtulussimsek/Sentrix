@@ -47,5 +47,9 @@ func (s *Server) adminRoutes(r chi.Router) {
 	r.Post("/settings/channels/{id}/toggle", s.handleChannelToggle)
 	r.Post("/settings/channels/{id}/delete", s.handleChannelDelete)
 	r.Post("/settings/digest", s.handleDigestSave)
+	r.Get("/settings/hooks", s.handleHooks)
+	r.Post("/settings/hooks", s.handleHookSave)
+	r.Post("/settings/hooks/{id}/test", s.handleHookTest)
+	r.Post("/settings/hooks/{id}/delete", s.handleHookDelete)
 	s.adminRoutesExtra(r)
 }
