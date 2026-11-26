@@ -30,6 +30,7 @@ type Server struct {
 	log  *slog.Logger
 	hub  *Hub
 	jobs []job
+	mets store.MetricStore
 
 	mu          sync.Mutex
 	onlineCache map[string]bool
@@ -47,8 +48,15 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load CA: %w", err)
 	}
-	s := &Server{cfg: cfg, db: db, ca: ca, log: log, hub: NewHub(), onlineCache: map[string]bool{}}
-	s.jobs = append(s.jobs, job{"presence", 5 * time.Second, s.checkPresence})
+	s := &Server{cfg: cfg, db: db, ca: ca, log: log, hub: NewHub(), onlineCache: map[string]bool{}, mets: db.Metrics()}
+	s.jobs = append(s.jobs,
+		job{"presence", 5 * time.Second, s.checkPresence},
+		job{"rollup", time.Minute, func(ctx context.Context) error { return s.mets.Rollup(ctx, time.Now()) }},
+		job{"retention", time.Hour, func(ctx context.Context) error {
+			r := s.cfg.Retention
+			return s.mets.Prune(ctx, time.Now(), r.Raw, r.Minute, r.Hour)
+		}},
+	)
 	return s, nil
 }
 

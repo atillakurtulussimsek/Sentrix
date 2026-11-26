@@ -13,10 +13,6 @@ func (s *Server) agentWatchConfig(_ context.Context, _ store.Host) ([]string, []
 	return nil, nil
 }
 
-func (s *Server) handleMetrics(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "not implemented", http.StatusNotImplemented)
-}
-
 func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	h := hostFrom(r.Context())
 	var st protocol.HostState

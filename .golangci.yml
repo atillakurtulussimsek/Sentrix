@@ -16,6 +16,7 @@ linters:
         - G104 # covered by errcheck
         - G304 # file paths come from config, not users
         - G204 # agent executor uses fixed argv, verified by tests
+        - G202 # SQL concatenation only with internal constant table/column names
     revive:
       rules:
         - name: exported

@@ -84,6 +84,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
+		if err := a.EnableMetrics(); err != nil {
+			return err
+		}
 		return a.Run(ctx)
 	default:
 		fs.Usage()

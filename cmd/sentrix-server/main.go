@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -25,6 +26,8 @@ Commands:
   token create [--note N] [--group G] [--ttl 24h]
                               create a one-time agent enrolment token
   ca-fingerprint              print the CA fingerprint agents must pin
+  stats                       print a JSON summary of stored data
+  hosts                       list hosts and their status
   version                     print version
 `
 
@@ -69,6 +72,25 @@ func run() error {
 	switch cmd {
 	case "serve":
 		return srv.Run(ctx)
+	case "hosts":
+		hosts, err := db.ListHosts(ctx)
+		if err != nil {
+			return err
+		}
+		for _, h := range hosts {
+			st := "offline"
+			if h.Online(time.Now(), cfg.OfflineAfter) {
+				st = "online"
+			}
+			fmt.Printf("%s\t%s\t%s\t%s\n", h.ID, h.Hostname, st, h.LastSeen.Format(time.RFC3339))
+		}
+		return nil
+	case "stats":
+		st, err := db.Stats(ctx)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(st)
 	case "ca-fingerprint":
 		fmt.Println(srv.CA().Fingerprint())
 		return nil
