@@ -1,10 +1,10 @@
 # Progress
-Current milestone: M1 — Core architecture & protocol
+Current milestone: M2 — Metrics collection & storage
 Last updated: 2026-11-27
 
 ## Milestones
 - [x] M0 Repository bootstrap
-- [ ] M1 Core architecture & protocol
+- [x] M1 Core architecture & protocol
 - [ ] M2 Metrics collection & storage
 - [ ] M3 Web UI foundation
 - [ ] M4 Inventory
@@ -19,4 +19,4 @@ Last updated: 2026-11-27
 - Docker is not installed on the build host: `make e2e` (multi-distro containers) cannot be executed here.
 
 ## Next up
-- M1: protocol types, store + migrations, internal CA, enrolment, heartbeat.
+- M2: /proc collectors, docker, systemd, reboot detection, disk buffer, ingestion, rollups.

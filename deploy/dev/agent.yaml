@@ -1,0 +1,5 @@
+# Local development agent config.
+state_dir: ./data/agent
+interval: 10s
+send_interval: 20s
+allow_patching: false
