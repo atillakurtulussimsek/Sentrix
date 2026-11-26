@@ -39,7 +39,7 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := filepath.Join(s.cfg.AgentDir, name)
-	f, err := os.Open(p)
+	f, err := os.Open(p) //nolint:gosec // name is one of two fixed values (switch above)
 	if err != nil {
 		http.NotFound(w, r)
 		return
