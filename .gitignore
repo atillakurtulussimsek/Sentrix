@@ -1,0 +1,11 @@
+/bin/
+/dist/
+*.db
+*.db-wal
+*.db-shm
+/data/
+/tmp/
+node_modules/
+coverage.out
+.DS_Store
+.claude/settings.local.json

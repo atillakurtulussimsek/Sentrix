@@ -1,0 +1,34 @@
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gosec
+    - misspell
+    - revive
+    - unconvert
+  settings:
+    gosec:
+      excludes:
+        - G104 # covered by errcheck
+        - G304 # file paths come from config, not users
+        - G204 # agent executor uses fixed argv, verified by tests
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [gosec, errcheck]
+formatters:
+  enable:
+    - gofmt
+    - goimports

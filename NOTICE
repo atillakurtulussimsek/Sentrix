@@ -1,0 +1,10 @@
+Sentrix
+Copyright 2026 Varkhe Digital
+
+This product includes software developed by Varkhe Digital.
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party components bundled in the web UI:
+- htmx (BSD 2-Clause, Big Sky Software)
+- uPlot (MIT, Leon Sorokin)
+- Tailwind CSS generated stylesheet (MIT, Tailwind Labs)
