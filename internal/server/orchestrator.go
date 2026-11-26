@@ -248,7 +248,8 @@ func (s *Server) advanceDryRun(ctx context.Context, p store.Plan) error {
 	}
 	now := time.Now()
 	allDone := true
-	for _, h := range hosts {
+	for i := range hosts {
+		h := &hosts[i]
 		switch h.Status {
 		case "pending":
 			action, params, skip, why := s.planCommand(ctx, p, h.HostID)
@@ -272,7 +273,7 @@ func (s *Server) advanceDryRun(ctx context.Context, p store.Plan) error {
 			case "ok":
 				h.Status = "dry_ok"
 				if c.Result != nil {
-					h.DryChanges, h.Output = c.Result.Changes, c.Result.Output
+					h.DryChanges, h.Output = s.fillFromVersions(ctx, h.HostID, c.Result.Changes), c.Result.Output
 				}
 			case "failed", "rejected", "expired":
 				h.Status, h.Error = "dry_failed", commandError(c)
@@ -284,7 +285,7 @@ func (s *Server) advanceDryRun(ctx context.Context, p store.Plan) error {
 				}
 			}
 		}
-		if err := s.db.SavePlanHost(ctx, h); err != nil {
+		if err := s.db.SavePlanHost(ctx, *h); err != nil {
 			return err
 		}
 	}
@@ -489,6 +490,18 @@ func (s *Server) stepHost(ctx context.Context, p store.Plan, h *store.PlanHost) 
 		case "ok":
 			if c.Result != nil {
 				h.Changes, h.Output, h.RebootRequired = c.Result.Changes, c.Result.Output, c.Result.RebootReq
+				if len(h.Changes) > 0 && len(h.DryChanges) > 0 {
+					// installed versions were captured at dry run; the inventory is already post-patch now
+					from := map[string]string{}
+					for _, d := range h.DryChanges {
+						from[d.Name] = d.From
+					}
+					for i := range h.Changes {
+						if h.Changes[i].From == "" {
+							h.Changes[i].From = from[h.Changes[i].Name]
+						}
+					}
+				}
 			}
 			needReboot := p.Reboot == "always" || (p.Reboot == "if_required" && h.RebootRequired)
 			if needReboot {
@@ -655,4 +668,33 @@ func (s *Server) RunPolicies(ctx context.Context) error {
 		s.log.Info("policy started automatic patch plan", "policy", pol.Name, "plan", p.ID, "hosts", len(candidates))
 	}
 	return nil
+}
+
+// fillFromVersions completes package changes whose tool output has no "from" version
+// (dnf) with the installed version from the latest inventory.
+func (s *Server) fillFromVersions(ctx context.Context, hostID string, changes []protocol.PackageChange) []protocol.PackageChange {
+	missing := false
+	for _, c := range changes {
+		if c.From == "" {
+			missing = true
+		}
+	}
+	if !missing {
+		return changes
+	}
+	pkgs, err := s.db.ListPackages(ctx, hostID, "")
+	if err != nil {
+		return changes
+	}
+	installed := map[string]string{}
+	for _, p := range pkgs {
+		installed[p.Name] = p.Version
+	}
+	out := append([]protocol.PackageChange(nil), changes...)
+	for i := range out {
+		if out[i].From == "" {
+			out[i].From = installed[out[i].Name]
+		}
+	}
+	return out
 }

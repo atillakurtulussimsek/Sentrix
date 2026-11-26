@@ -39,7 +39,7 @@ builds:
 
 archives:
   - id: server
-    ids: [sentrix-server, sentrix-cli]
+    ids: [sentrix-server]
     name_template: "sentrix-server_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files: [LICENSE, NOTICE, README.md, CHANGELOG.md, deploy/systemd/sentrix-server.service, deploy/nfpm/server.yaml]
   - id: agent-binary

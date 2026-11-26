@@ -1,0 +1,7 @@
+{
+  "name": "sentrix-screenshots",
+  "private": true,
+  "description": "Dev-only: captures README screenshots from a running dev server (uses the local Chrome).",
+  "type": "module",
+  "devDependencies": { "puppeteer-core": "^23.0.0" }
+}

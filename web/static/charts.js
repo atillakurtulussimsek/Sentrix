@@ -20,7 +20,10 @@
     var m = key.match(/^([a-z0-9_]+)\.([a-z0-9_]+)(?:\{(.*)\})?$/);
     if (!m) return key;
     var metric = m[2], labels = m[3];
-    if (!labels) return metric;
+    if (!labels) {
+      var same = all.filter(function (s) { return s.key.split("{")[0].split(".")[1] === metric; }).length;
+      return same > 1 ? m[1] : metric;
+    }
     var vals = labels.split(",").map(function (kv) { return kv.split("=")[1]; }).join(" ");
     var metrics = {};
     all.forEach(function (s) { metrics[s.key.split("{")[0]] = 1; });

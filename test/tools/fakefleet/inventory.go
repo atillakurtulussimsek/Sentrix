@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/atillakurtulussimsek/Sentrix/internal/agent/executor"
+
 	"github.com/atillakurtulussimsek/Sentrix/internal/protocol"
 )
 
@@ -68,27 +70,52 @@ var demoUpdates = map[string][]protocol.Update{
 	"alpine":    {{Name: "libcrypto3", CurrentVer: "3.1.4-r5", NewVer: "3.1.7-r1", Origin: "main"}},
 }
 
+func demoInventory(h *fakeHost) protocol.Inventory {
+	pkgs := append([]protocol.Package(nil), demoPackages[h.os.ID]...)
+	ups := demoUpdates[h.os.ID]
+	if isPatched(h.name) {
+		nv := map[string]string{}
+		for _, u := range ups {
+			nv[u.Name] = u.NewVer
+		}
+		for i := range pkgs {
+			if v, ok := nv[pkgs[i].Name]; ok {
+				pkgs[i].Version, pkgs[i].SourceVer = v, v
+			}
+		}
+		ups = nil
+	}
+	inv := protocol.Inventory{CollectedAt: time.Now(), OS: h.os, Packages: pkgs, Updates: ups,
+		Ports: []protocol.ListeningPort{{Proto: "tcp", Address: "0.0.0.0", Port: 22, Process: "sshd"}}}
+	switch h.os.ID {
+	case "debian", "ubuntu":
+		inv.PackageManager = "dpkg"
+	case "alpine":
+		inv.PackageManager = "apk"
+		inv.Ports = append(inv.Ports, protocol.ListeningPort{Proto: "tcp", Address: "0.0.0.0", Port: 443, Process: "haproxy"})
+	default:
+		inv.PackageManager = "rpm"
+	}
+	if h.name == "web-01" || h.name == "web-02" {
+		inv.Ports = append(inv.Ports, protocol.ListeningPort{Proto: "tcp", Address: "0.0.0.0", Port: 443, Process: "nginx"})
+	}
+	return inv
+}
+
 func init() {
 	extraInit = func(ctx context.Context, hosts []fakeHost) func(context.Context, *fakeHost, int) {
+		execs := map[string]*executor.Executor{}
 		return func(ctx context.Context, h *fakeHost, i int) {
+			ex, ok := execs[h.name]
+			if !ok {
+				ex = newExecutor(h)
+				execs[h.name] = ex
+			}
+			_ = h.a.PollOnce(ctx, ex, 0)
 			if i%360 != 0 { // every hour
 				return
 			}
-			inv := protocol.Inventory{CollectedAt: time.Now(), OS: h.os, Packages: demoPackages[h.os.ID], Updates: demoUpdates[h.os.ID],
-				Ports: []protocol.ListeningPort{{Proto: "tcp", Address: "0.0.0.0", Port: 22, Process: "sshd"}}}
-			switch h.os.ID {
-			case "debian", "ubuntu":
-				inv.PackageManager = "dpkg"
-			case "alpine":
-				inv.PackageManager = "apk"
-				inv.Ports = append(inv.Ports, protocol.ListeningPort{Proto: "tcp", Address: "0.0.0.0", Port: 443, Process: "haproxy"})
-			default:
-				inv.PackageManager = "rpm"
-			}
-			if h.name == "web-01" || h.name == "web-02" {
-				inv.Ports = append(inv.Ports, protocol.ListeningPort{Proto: "tcp", Address: "0.0.0.0", Port: 443, Process: "nginx"})
-			}
-			_ = h.a.Post(ctx, protocol.PathInventory, inv, nil)
+			_ = h.a.Post(ctx, protocol.PathInventory, demoInventory(h), nil)
 		}
 	}
 }
