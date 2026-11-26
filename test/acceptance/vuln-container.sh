@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # M5 acceptance with live feeds: a deliberately old Debian container must report exactly
-# the openssl CVEs that the Debian Security Tracker lists as fixed in a newer version
+# the glibc CVEs that the Debian Security Tracker lists as fixed in a newer version
 # (oracle: dpkg --compare-versions inside the container) plus open ones; after upgrading
 # openssl those CVEs must disappear. Needs Docker, jq, network.
 set -euo pipefail
@@ -8,7 +8,9 @@ cd "$(dirname "$0")/../.."
 ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
 BIN="$PWD/bin/linux_$ARCH"
 IMG=${IMG:-debian:bookworm-20240110}
-PKG=openssl
+PKG=${PKG:-glibc}          # source package (Debian tracker key)
+BINS=${BINS:-libc6 libc-bin} # its binaries installed in the image
+FIRSTBIN=${BINS%% *}
 WORK=$(mktemp -d)
 C=sx-vuln-$$
 cleanup() { docker rm -f $C >/dev/null 2>&1 || true; kill $(jobs -p) 2>/dev/null || true; }
@@ -47,7 +49,7 @@ TRACKER="$WORK/server/feeds/debian-tracker.json"
 
 expected() { # prints "CVE fixed" lines for $PKG given the container's installed source version
   local inst
-  inst=$(docker exec $C dpkg-query -W -f='${source:Version}\n' libssl3 | head -1)
+  inst=$(docker exec $C dpkg-query -W -f='${source:Version}\n' $FIRSTBIN | head -1)
   jq -r --arg p "$PKG" '.[$p] | to_entries[] | select(.key|startswith("CVE-")) | .key as $k | .value.releases.bookworm // empty
      | select((.status=="resolved" and .fixed_version!="0" and .fixed_version!=null) or .status=="open" or .status=="undetermined")
      | "\($k) \(if .status=="resolved" then .fixed_version else "-" end)"' "$TRACKER" |
@@ -58,18 +60,18 @@ expected() { # prints "CVE fixed" lines for $PKG given the container's installed
 actual() { "$BIN/sentrix-server" --config "$WORK/server.yaml" findings --host deb-old | awk -F'\t' -v p=$PKG '$3==p {print $2" "$5}' | sort; }
 
 expected > "$WORK/exp1"; actual > "$WORK/act1"
-echo "installed: $(docker exec $C dpkg-query -W -f='${Version}' libssl3) — expected $(wc -l < "$WORK/exp1") openssl CVEs, Sentrix reports $(wc -l < "$WORK/act1")"
-diff -u "$WORK/exp1" "$WORK/act1" || fail "openssl findings differ from tracker+dpkg oracle"
+echo "installed $FIRSTBIN: $(docker exec $C dpkg-query -W -f='${Version}' $FIRSTBIN) — expected $(wc -l < "$WORK/exp1") $PKG CVEs, Sentrix reports $(wc -l < "$WORK/act1")"
+diff -u "$WORK/exp1" "$WORK/act1" || fail "$PKG findings differ from tracker+dpkg oracle"
 FIXABLE=$(awk '$2!="-"' "$WORK/exp1" | head -1)
-[ -n "$FIXABLE" ] || fail "image has no fixable openssl CVE — pick an older image"
+[ -n "$FIXABLE" ] || fail "image has no fixable $PKG CVE — pick an older image"
 echo "example: $FIXABLE"
 
-echo "== upgrading openssl in the container"
-docker exec $C sh -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --only-upgrade openssl libssl3' >/dev/null
+echo "== upgrading $PKG in the container"
+docker exec $C sh -c "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --only-upgrade $BINS" >/dev/null
 docker exec $C sh -c 'kill $(cat /run/sx.pid)'; sleep 1; start_agent
 gone() { ! actual | grep -q "^${FIXABLE%% *} "; }
 wait_for 180 "${FIXABLE%% *} to disappear" gone
 expected > "$WORK/exp2"; actual > "$WORK/act2"
 diff -u "$WORK/exp2" "$WORK/act2" || fail "post-upgrade findings differ"
-echo "after upgrade: $(wc -l < "$WORK/act2") openssl CVEs remain (all unfixed or newer)"
+echo "after upgrade: $(wc -l < "$WORK/act2") $PKG CVEs remain (all unfixed or newer)"
 echo PASS
