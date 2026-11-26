@@ -1,0 +1,22 @@
+{{define "title"}}Vulnerability feeds{{end}}
+{{define "content"}}
+{{template "settingsnav" .}}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <p class="text-sm text-zinc-600 dark:text-zinc-400">Feeds are downloaded to this server and matched locally — no host data is sent anywhere. Interval: {{.Data.Interval}}. NVD API key: {{if .Data.NVDKey}}configured{{else}}not set (slower CVSS enrichment){{end}}.</p>
+  <form method="post" action="/settings/feeds/sync"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="btn-primary" {{if or .Data.Syncing (not .Data.Enabled)}}disabled{{end}}>{{if .Data.Syncing}}Syncing…{{else}}Sync now{{end}}</button></form>
+</div>
+{{if not .Data.Enabled}}<div class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">Feed synchronisation is disabled (<code>feeds.enabled: false</code>).</div>{{end}}
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Feed</th><th>Status</th><th>Last success</th><th class="text-right">Records</th><th>Last error</th></tr></thead>
+    <tbody>{{range .Data.Feeds}}
+    <tr class="{{if not .Relevant}}opacity-50{{end}}">
+      <td><div class="font-medium">{{.Name}}</div><div class="text-xs text-zinc-500">{{.Description}}</div></td>
+      <td>{{if not .Relevant}}<span class="badge badge-muted">not needed</span>{{else if .LastError}}<span class="badge badge-offline">error</span>{{else if .LastSuccess.IsZero}}<span class="badge badge-warn">pending</span>{{else}}<span class="badge badge-online">ok</span>{{end}}</td>
+      <td class="text-sm">{{if .LastSuccess.IsZero}}never{{else}}{{reltime .LastSuccess}}{{end}}</td>
+      <td class="text-right tabular-nums">{{.Records}}</td>
+      <td class="max-w-xs truncate text-xs text-red-600" title="{{.LastError}}">{{.LastError}}</td>
+    </tr>{{end}}</tbody>
+  </table>
+</div>
+{{end}}

@@ -28,6 +28,8 @@ Commands:
   ca-fingerprint              print the CA fingerprint agents must pin
   stats                       print a JSON summary of stored data
   hosts                       list hosts and their status
+  findings [--host NAME]      list vulnerability findings (TSV)
+  sync-feeds                  download vulnerability feeds now and re-match hosts
   version                     print version
 `
 
@@ -85,6 +87,34 @@ func run() error {
 			fmt.Printf("%s\t%s\t%s\t%s\n", h.ID, h.Hostname, st, h.LastSeen.Format(time.RFC3339))
 		}
 		return nil
+	case "findings":
+		ff := flag.NewFlagSet("findings", flag.ExitOnError)
+		host := ff.String("host", "", "hostname filter")
+		_ = ff.Parse(args)
+		hosts, err := db.ListHosts(ctx)
+		if err != nil {
+			return err
+		}
+		for _, h := range hosts {
+			if *host != "" && h.Hostname != *host {
+				continue
+			}
+			fs, err := db.ListFindings(ctx, store.FindingFilter{HostID: h.ID})
+			if err != nil {
+				return err
+			}
+			for _, f := range fs {
+				fixed := f.Fixed
+				if fixed == "" {
+					fixed = "-"
+				}
+				fmt.Printf("%s\t%s\t%s\t%s\t%s\t%s\t%.1f\n", h.Hostname, f.VulnID, f.Package, f.Installed, fixed, f.Severity, f.Risk)
+			}
+		}
+		return nil
+	case "sync-feeds":
+		cfg.Feeds.Enabled = true
+		return srv.SyncFeeds(ctx, true)
 	case "stats":
 		st, err := db.Stats(ctx)
 		if err != nil {

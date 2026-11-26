@@ -1,0 +1,1 @@
+{"id": "ALSA-2020:0001", "withdrawn": "2021-01-01T00:00:00Z", "aliases": ["CVE-2020-0001"], "affected": [{"package": {"ecosystem": "AlmaLinux:8", "name": "x"}, "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "1"}]}]}]}

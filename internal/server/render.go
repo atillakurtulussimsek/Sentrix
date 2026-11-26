@@ -74,8 +74,9 @@ func newRenderer(cat *i18n.Catalog, lang string) (*renderer, error) {
 			}
 			return t.Local().Format("2006-01-02 15:04")
 		},
-		"add": func(a, b int) int { return a + b },
-		"pf":  func(f float64) string { return fmt.Sprintf("%.1f", f) },
+		"add":    func(a, b int) int { return a + b },
+		"pf":     func(f float64) string { return fmt.Sprintf("%.1f", f) },
+		"mul100": func(f float64) float64 { return f * 100 },
 	}
 	shared := []string{"templates/layout.html", "templates/host_head.html", "templates/settings_nav.html"}
 	entries, err := fs.Glob(web.Templates, "templates/*.html")

@@ -1,0 +1,36 @@
+{
+  "openssl": {
+    "CVE-2024-5535": {
+      "description": "SSL_select_next_proto buffer overread",
+      "scope": "remote",
+      "releases": {
+        "bookworm": {"status": "resolved", "repositories": {"bookworm": "3.0.15-1~deb12u1"}, "fixed_version": "3.0.15-1~deb12u1", "urgency": "not yet assigned"},
+        "bullseye": {"status": "resolved", "repositories": {"bullseye": "1.1.1w-0+deb11u1"}, "fixed_version": "1.1.1w-0+deb11u2", "urgency": "not yet assigned"},
+        "sid": {"status": "resolved", "repositories": {"sid": "3.3.2-2"}, "fixed_version": "3.3.1-6", "urgency": "not yet assigned"}
+      }
+    },
+    "CVE-2023-0464": {
+      "description": "Excessive Resource Usage Verifying X.509 Policy Constraints",
+      "releases": {
+        "bookworm": {"status": "resolved", "repositories": {"bookworm": "3.0.15-1~deb12u1"}, "fixed_version": "0", "urgency": "low"}
+      }
+    },
+    "TEMP-0000000-ABCDEF": {
+      "releases": {"bookworm": {"status": "open", "urgency": "unimportant"}}
+    }
+  },
+  "glibc": {
+    "CVE-2010-4756": {
+      "description": "The glob implementation in the GNU C Library allows remote authenticated users to cause a denial of service",
+      "releases": {
+        "bookworm": {"status": "open", "repositories": {"bookworm": "2.36-9+deb12u9"}, "urgency": "unimportant"}
+      }
+    },
+    "CVE-2024-2961": {
+      "description": "iconv() ISO-2022-CN-EXT out-of-bounds write",
+      "releases": {
+        "bookworm": {"status": "resolved", "repositories": {"bookworm": "2.36-9+deb12u9"}, "fixed_version": "2.36-9+deb12u6", "urgency": "not yet assigned"}
+      }
+    }
+  }
+}

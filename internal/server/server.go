@@ -48,6 +48,8 @@ type Server struct {
 	loginUser *auth.Limiter
 
 	inventoryHooks []func(ctx context.Context, hostID string)
+	feeds          feedRunner
+	bgCtx          context.Context
 }
 
 type job struct {
@@ -81,6 +83,13 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 	s := &Server{cfg: cfg, db: db, ca: ca, log: log, hub: NewHub(), onlineCache: map[string]bool{}, mets: db.Metrics(),
 		cat: cat, rend: rend, box: box,
 		loginIP: auth.NewLimiter(20, 15*time.Minute), loginUser: auth.NewLimiter(5, 15*time.Minute)}
+	s.bgCtx = context.Background()
+	if cfg.Feeds.Enabled {
+		s.jobs = append(s.jobs,
+			job{"feeds", 15 * time.Minute, func(ctx context.Context) error { return s.SyncFeeds(ctx, false) }},
+			job{"nvd", 3 * time.Minute, s.enrichNVD})
+	}
+	s.OnInventory(s.afterInventory)
 	s.jobs = append(s.jobs,
 		job{"presence", 5 * time.Second, s.checkPresence},
 		job{"rollup", time.Minute, func(ctx context.Context) error { return s.mets.Rollup(ctx, time.Now()) }},
@@ -164,6 +173,7 @@ func (s *Server) Run(ctx context.Context) error {
 	s.log.Info("sentrix server started", "ui", uiLn.Addr().String(), "gateway", gwLn.Addr().String(), "ca_fingerprint", s.ca.Fingerprint())
 
 	jobCtx, cancelJobs := context.WithCancel(ctx)
+	s.bgCtx = jobCtx
 	var wg sync.WaitGroup
 	for _, j := range s.jobs {
 		wg.Add(1)

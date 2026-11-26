@@ -1,0 +1,10 @@
+{
+  "id": "RLSA-2024:4312",
+  "summary": "Important: openssh security update",
+  "aliases": ["CVE-2024-6387"],
+  "published": "2024-07-03T00:00:00Z",
+  "affected": [
+    {"package": {"ecosystem": "Rocky Linux:9", "name": "openssh"}, "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "8.7p1-38.el9_4.1"}]}]},
+    {"package": {"ecosystem": "Rocky Linux:9", "name": "openssh-server"}, "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "8.7p1-38.el9_4.1"}]}]}
+  ]
+}
