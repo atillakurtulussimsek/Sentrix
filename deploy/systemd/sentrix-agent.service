@@ -1,0 +1,20 @@
+[Unit]
+Description=Sentrix agent
+Documentation=https://github.com/atillakurtulussimsek/Sentrix
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/sentrix-agent --config /etc/sentrix/agent.yaml run
+Restart=always
+RestartSec=5
+# Runs as root: reading package databases and applying updates requires it.
+User=root
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=200M
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

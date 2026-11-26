@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -39,6 +41,7 @@ Commands:
   hosts                       list hosts and their status
   findings [--host NAME]      list vulnerability findings (TSV)
   sync-feeds                  download vulnerability feeds now and re-match hosts
+  healthcheck                 exit 0 if the local UI listener answers /healthz
   version                     print version
 `
 
@@ -66,6 +69,21 @@ func run() error {
 	cfg := config.DefaultServer()
 	if err := config.Load(*cfgPath, &cfg); err != nil {
 		return err
+	}
+	if cmd == "healthcheck" { // used by the container HEALTHCHECK (no curl in distroless)
+		port := cfg.Listen
+		if strings.HasPrefix(port, ":") {
+			port = "127.0.0.1" + port
+		}
+		resp, err := http.Get("http://" + port + "/healthz") //nolint:gosec,noctx // local health probe
+		if err != nil {
+			return err
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("unhealthy: %s", resp.Status)
+		}
+		return nil
 	}
 	log := cli.Logger(cfg.LogLevel)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -285,8 +303,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("token:          %s\nca fingerprint: %s\n\nsentrix-agent enroll --server %s --token %s --ca-fingerprint %s\n",
-			tok, srv.CA().Fingerprint(), cfg.GatewayURL, tok, srv.CA().Fingerprint())
+		fp := srv.CA().Fingerprint()
+		fmt.Printf("token:          %s\nca fingerprint: %s\n\ninstall + enrol (run as root on the host):\n  curl -fsSL %s/install.sh | sudo sh -s -- --token %s --ca-fingerprint %s\n\nalready installed:\n  sentrix-agent enroll --server %s --token %s --ca-fingerprint %s\n",
+			tok, fp, strings.TrimRight(cfg.BaseURL, "/"), tok, fp, cfg.GatewayURL, tok, fp)
 		return nil
 	default:
 		fs.Usage()

@@ -23,6 +23,8 @@ func (s *Server) UIHandler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(s.accessLog, securityHeaders, limitBody)
 	r.Get("/healthz", s.handleHealth)
+	r.Get("/install.sh", s.handleInstallScript)
+	r.Get("/download/{name}", s.handleDownload)
 	static, _ := fs.Sub(web.Static, "static")
 	r.Handle("/static/*", http.StripPrefix("/static/", cacheStatic(http.FileServer(http.FS(static)))))
 

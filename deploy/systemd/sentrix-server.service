@@ -1,0 +1,33 @@
+[Unit]
+Description=Sentrix server
+Documentation=https://github.com/atillakurtulussimsek/Sentrix
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/sentrix-server --config /etc/sentrix/server.yaml serve
+Restart=always
+RestartSec=5
+User=sentrix
+Group=sentrix
+StateDirectory=sentrix
+Environment=SENTRIX_DATA_DIR=/var/lib/sentrix
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=/var/lib/sentrix
+
+[Install]
+WantedBy=multi-user.target

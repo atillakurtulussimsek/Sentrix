@@ -1,0 +1,6 @@
+# Default agent configuration installed by the package (not overwritten on upgrade).
+# Enrol once with: sudo sentrix-agent --config /etc/sentrix/agent.yaml enroll --server URL --token T --ca-fingerprint FP
+state_dir: /var/lib/sentrix-agent
+interval: 10s
+send_interval: 30s
+allow_patching: true

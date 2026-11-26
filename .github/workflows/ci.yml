@@ -69,3 +69,33 @@ jobs:
       - run: make build-linux
       - name: Security-only plan on Debian + Rocky containers via CLI (live feeds)
         run: test/acceptance/patch-containers.sh
+
+  package:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean
+      - name: Inspect packages
+        run: |
+          ls -la dist/*.deb dist/*.rpm
+          dpkg-deb -c dist/sentrix-agent_*_amd64.deb
+          dpkg-deb -I dist/sentrix-agent_*_amd64.deb
+
+  quickstart:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t sentrix:ci --build-arg VERSION=ci --build-arg COMMIT=${GITHUB_SHA::7} .
+      - name: README quick start (compose + one-liner, host scanned within 5 minutes)
+        run: test/acceptance/quickstart.sh

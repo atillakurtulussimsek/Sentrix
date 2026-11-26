@@ -1,0 +1,23 @@
+# Sentrix — quick start
+#   SENTRIX_HOST=sentrix.example.com docker compose up -d
+# then open http://SENTRIX_HOST:8080 (put an HTTPS reverse proxy in front for production).
+# Agents connect to https://SENTRIX_HOST:8443 (mutual TLS terminated by Sentrix itself:
+# forward this port as plain TCP, do not terminate TLS on it).
+services:
+  sentrix:
+    image: ${SENTRIX_IMAGE:-ghcr.io/atillakurtulussimsek/sentrix:latest}
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # web UI / API
+      - "8443:8443"   # agent gateway (mTLS)
+    environment:
+      SENTRIX_BASE_URL: ${SENTRIX_BASE_URL:-http://${SENTRIX_HOST:-localhost}:8080}
+      SENTRIX_GATEWAY_URL: https://${SENTRIX_HOST:-localhost}:8443
+      SENTRIX_GATEWAY_HOSTS: ${SENTRIX_HOST:-localhost},localhost,127.0.0.1
+      # SENTRIX_NVD_API_KEY: ""   # optional: faster CVSS enrichment
+    volumes:
+      - sentrix-data:/data
+
+volumes:
+  sentrix-data:

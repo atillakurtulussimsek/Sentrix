@@ -35,6 +35,9 @@ type Server struct {
 	Retention Retention `yaml:"retention"`
 	Feeds     Feeds     `yaml:"feeds"`
 	LogLevel  string    `yaml:"log_level" env:"SENTRIX_LOG_LEVEL"`
+	// Directory with agent binaries (sentrix-agent-linux-amd64, -arm64) served at
+	// /download/ for the install.sh one-liner. Empty disables downloads.
+	AgentDir string `yaml:"agent_dir" env:"SENTRIX_AGENT_DIR"`
 	// UI language (message catalog in web/i18n): "en" (default) or "tr".
 	Language string `yaml:"language" env:"SENTRIX_LANGUAGE"`
 	// Insecure cookies for plain-HTTP local development only.

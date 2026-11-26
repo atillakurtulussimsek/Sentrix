@@ -1,0 +1,8 @@
+# Sentrix server configuration — see docs/configuration.md
+data_dir: /var/lib/sentrix
+listen: ":8080"
+base_url: "http://localhost:8080"   # set to the public HTTPS URL of the UI
+gateway_listen: ":8443"
+gateway_url: "https://localhost:8443"   # URL agents use to reach this server
+gateway_hosts: ["localhost", "127.0.0.1"]
+agent_dir: /usr/share/sentrix/agents

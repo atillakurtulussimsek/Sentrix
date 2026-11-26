@@ -241,7 +241,11 @@ func (s *Server) dispatch(ctx context.Context, r store.Rule, a store.Alert, even
 	if a.HostID != "" {
 		link = strings.TrimRight(s.cfg.BaseURL, "/") + "/hosts/" + a.HostID
 	}
-	m := notify.Message{Event: event, Severity: a.Severity, Title: title, Body: a.Message, Host: host, HostID: a.HostID, AlertID: a.ID, Rule: r.Name, Value: a.Value, URL: link, Time: s.now()}
+	body := a.Message
+	if event == "resolved" {
+		body = "Condition cleared. Last observed: " + a.Message
+	}
+	m := notify.Message{Event: event, Severity: a.Severity, Title: title, Body: body, Host: host, HostID: a.HostID, AlertID: a.ID, Rule: r.Name, Value: a.Value, URL: link, Time: s.now()}
 	s.sendToChannels(ctx, r.Channels, m, a.ID)
 }
 
