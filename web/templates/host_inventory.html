@@ -1,0 +1,55 @@
+{{define "title"}}{{.Data.Host.Hostname}} · Inventory{{end}}
+{{define "content"}}
+{{template "hosthead" .}}
+{{with .Data.Inventory}}
+<div class="grid gap-6 lg:grid-cols-3">
+  <section class="card">
+    <div class="card-header"><h2>Operating system</h2><span class="text-xs text-zinc-500">collected {{reltime .CollectedAt}}</span></div>
+    <dl class="grid grid-cols-3 gap-x-4 gap-y-2.5 px-5 py-4 text-sm">
+      <dt class="text-zinc-500">Distribution</dt><dd class="col-span-2">{{.OS.PrettyName}}</dd>
+      <dt class="text-zinc-500">ID / version</dt><dd class="col-span-2 font-mono text-xs">{{.OS.ID}} {{.OS.VersionID}}{{with .OS.Codename}} ({{.}}){{end}}</dd>
+      <dt class="text-zinc-500">Kernel</dt><dd class="col-span-2 font-mono text-xs">{{.OS.Kernel}}</dd>
+      <dt class="text-zinc-500">Architecture</dt><dd class="col-span-2">{{.OS.Arch}}</dd>
+      <dt class="text-zinc-500">Virtualization</dt><dd class="col-span-2">{{.OS.Virtualization}}</dd>
+      <dt class="text-zinc-500">Packages</dt><dd class="col-span-2">{{.PackageManager}}</dd>
+    </dl>
+    {{if .Errors}}<div class="border-t border-zinc-100 px-5 py-3 text-xs text-red-600 dark:border-zinc-800">{{range .Errors}}<p>{{.}}</p>{{end}}</div>{{end}}
+  </section>
+  <section class="card lg:col-span-2">
+    <div class="card-header"><h2>Listening ports</h2><span class="text-xs text-zinc-500">{{len $.Data.Ports}}</span></div>
+    {{if $.Data.Ports}}
+    <table class="table table-compact">
+      <thead><tr><th>Proto</th><th>Address</th><th class="text-right">Port</th><th>Process</th><th class="text-right">PID</th></tr></thead>
+      <tbody>{{range $.Data.Ports}}<tr><td class="uppercase text-xs">{{.Proto}}</td><td class="font-mono text-xs">{{.Address}}{{if or (eq .Address "0.0.0.0") (eq .Address "::")}} <span class="badge badge-warn">exposed</span>{{end}}</td><td class="text-right tabular-nums">{{.Port}}</td><td>{{or .Process "–"}}</td><td class="text-right tabular-nums text-zinc-500">{{if .PID}}{{.PID}}{{end}}</td></tr>{{end}}</tbody>
+    </table>
+    {{else}}<div class="empty">No listening sockets reported.</div>{{end}}
+  </section>
+</div>
+{{if $.Data.Images}}
+<section class="card mt-6">
+  <div class="card-header"><h2>Container images</h2></div>
+  <ul class="flex flex-wrap gap-2 px-5 py-4">{{range $.Data.Images}}<li class="badge font-mono">{{.}}</li>{{end}}</ul>
+</section>
+{{end}}
+<section class="card mt-6">
+  <div class="card-header gap-4">
+    <h2>Installed packages</h2>
+    <input type="search" name="q" value="{{$.Data.Query}}" placeholder="Filter packages…" class="input input-sm max-w-xs" hx-get="/hosts/{{$.Data.Host.ID}}/inventory" hx-trigger="input changed delay:250ms" hx-target="#pkg-table" hx-swap="outerHTML">
+  </div>
+  {{template "pkgtable" $}}
+</section>
+{{else}}
+<div class="card empty">No inventory received yet. The agent sends one shortly after start and every 6 hours.</div>
+{{end}}
+{{end}}
+
+{{define "pkgtable"}}
+<div id="pkg-table" class="max-h-[36rem] overflow-y-auto">
+  {{if .Data.Packages}}
+  <table class="table table-compact">
+    <thead class="sticky top-0 bg-white dark:bg-zinc-900"><tr><th>Name</th><th>Version</th><th>Arch</th><th>Source</th></tr></thead>
+    <tbody>{{range .Data.Packages}}<tr><td class="font-medium">{{.Name}}</td><td class="font-mono text-xs">{{.Version}}</td><td class="text-xs text-zinc-500">{{.Arch}}</td><td class="text-xs text-zinc-500">{{if ne .SourceName .Name}}{{.SourceName}}{{end}}</td></tr>{{end}}</tbody>
+  </table>
+  {{else}}<div class="empty">No packages{{with .Data.Query}} matching “{{.}}”{{end}}.</div>{{end}}
+</div>
+{{end}}

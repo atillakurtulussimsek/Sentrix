@@ -30,7 +30,8 @@ type Agent struct {
 	tlsEndpoints  []string
 
 	// hooks registered by subsystems (collectors, inventory, executor)
-	loops []func(context.Context)
+	loops  []func(context.Context)
+	invNow chan struct{}
 }
 
 // New loads the identity from cfg.StateDir and prepares the mTLS client.

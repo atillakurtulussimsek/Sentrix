@@ -1,0 +1,2 @@
+libcrypto3-3.1.7-r1 x86_64 {openssl} (Apache-2.0) [upgradable from: libcrypto3-3.1.4-r5]
+busybox-binsh-1.36.1-r20 x86_64 {busybox} (GPL-2.0-only) [upgradable from: busybox-binsh-1.36.1-r15]

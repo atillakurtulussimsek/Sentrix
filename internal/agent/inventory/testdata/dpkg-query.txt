@@ -1,0 +1,4 @@
+ii 	libssl3	3.0.11-1~deb12u2	amd64	openssl	3.0.11-1~deb12u2
+ii 	bash	5.2.15-2+b2	amd64	bash	5.2.15-2
+rc 	old	1.0	amd64		
+ii 	zlib1g	1:1.2.13.dfsg-1	amd64	zlib	1:1.2.13.dfsg-1

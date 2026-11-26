@@ -1,0 +1,20 @@
+{{define "title"}}{{.Data.Host.Hostname}} · Updates{{end}}
+{{define "content"}}
+{{template "hosthead" .}}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <p class="text-sm text-zinc-600 dark:text-zinc-400">{{len .Data.Updates}} pending updates, <span class="font-semibold text-red-600">{{.Data.Security}} security</span>{{with .Data.Inventory}} · checked {{reltime .CollectedAt}}{{end}}</p>
+  {{if can .User "operator"}}{{if .Data.Updates}}<a href="/patches/new?hosts={{.Data.Host.ID}}" class="btn-primary">Plan patch…</a>{{end}}{{end}}
+</div>
+<div class="card overflow-x-auto">
+  {{if .Data.Updates}}
+  <table class="table table-compact">
+    <thead><tr><th>Package</th><th>Installed</th><th>Available</th><th>Type</th><th>Origin</th></tr></thead>
+    <tbody>{{range .Data.Updates}}
+    <tr><td class="font-medium">{{.Name}}</td><td class="font-mono text-xs">{{or .CurrentVer "(new)"}}</td><td class="font-mono text-xs">{{.NewVer}}</td>
+      <td>{{if .Security}}<span class="badge badge-offline">security</span>{{else}}<span class="badge badge-muted">regular</span>{{end}}</td>
+      <td class="max-w-xs truncate text-xs text-zinc-500" title="{{.Origin}}">{{.Origin}}</td></tr>
+    {{end}}</tbody>
+  </table>
+  {{else}}<div class="empty">The host is up to date.</div>{{end}}
+</div>
+{{end}}

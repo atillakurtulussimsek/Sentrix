@@ -66,3 +66,12 @@ func ServiceStates(ctx context.Context, run Runner, units []string) []protocol.S
 	}
 	return out
 }
+
+// LongRunner is ExecRunner with a 15-minute timeout (package manager operations).
+func LongRunner(ctx context.Context, name string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Env = []string{"LC_ALL=C", "PATH=/usr/sbin:/usr/bin:/sbin:/bin", "DEBIAN_FRONTEND=noninteractive"}
+	return cmd.Output()
+}

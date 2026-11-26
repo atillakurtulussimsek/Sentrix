@@ -43,6 +43,8 @@ func (s *Server) UIHandler() http.Handler {
 			r.Get("/hosts", s.handleHosts)
 			r.Get("/hosts/{id}", s.handleHostOverview)
 			r.Get("/hosts/{id}/state", s.handleHostState)
+			r.Get("/hosts/{id}/inventory", s.handleHostInventory)
+			r.Get("/hosts/{id}/updates", s.handleHostUpdates)
 			r.Get("/hosts/{id}/stream", s.handleHostStream)
 			r.Get("/api/v1/hosts", s.apiHosts)
 			r.Get("/api/v1/hosts/{id}/series", s.apiSeries)

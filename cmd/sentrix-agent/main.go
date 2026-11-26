@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -21,6 +22,7 @@ Commands:
   run                         run the agent (default)
   enroll --server URL --token TOKEN --ca-fingerprint SHA256
                               enrol this host (one-time)
+  inventory [--refresh]       print this host's inventory as JSON (no server needed)
   version                     print version
 `
 
@@ -87,7 +89,16 @@ func run() error {
 		if err := a.EnableMetrics(); err != nil {
 			return err
 		}
+		a.EnableInventory()
 		return a.Run(ctx)
+	case "inventory":
+		ivf := flag.NewFlagSet("inventory", flag.ExitOnError)
+		refresh := ivf.Bool("refresh", false, "refresh package metadata (apt-get update / apk update) first")
+		_ = ivf.Parse(args)
+		inv := agent.NewInventoryCollector(cfg.ProcRoot, cfg.DockerSocket, *refresh).Collect(ctx)
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(inv)
 	default:
 		fs.Usage()
 		return fmt.Errorf("unknown command %q", cmd)

@@ -46,6 +46,8 @@ type Server struct {
 	setupDone atomic.Bool
 	loginIP   *auth.Limiter
 	loginUser *auth.Limiter
+
+	inventoryHooks []func(ctx context.Context, hostID string)
 }
 
 type job struct {
