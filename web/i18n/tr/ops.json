@@ -281,5 +281,7 @@
   "audit.action.command.result.patch_security_only": "Komut sonucu: güvenlik yaması",
   "audit.action.command.result.patch_all": "Komut sonucu: tam yama",
   "audit.action.command.result.reboot": "Komut sonucu: yeniden başlatma",
-  "audit.action.command.result.restart_service": "Komut sonucu: servis yeniden başlatma"
+  "audit.action.command.result.restart_service": "Komut sonucu: servis yeniden başlatma",
+  "vuln.status.rebootRequired": "yeniden başlatma gerekli",
+  "vuln.rebootRequiredHint": "Düzeltme daha yeni bir çekirdekte kurulu; devreye girmesi için sunucuyu yeniden başlatın. O zamana kadar çalışan çekirdek hâlâ açık barındırıyor."
 }

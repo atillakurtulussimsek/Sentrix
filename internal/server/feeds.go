@@ -331,7 +331,7 @@ func (s *Server) rematchHost(ctx context.Context, hostID string) error {
 		return err
 	}
 	ports, _ := s.db.ListPorts(ctx, hostID)
-	found := vuln.Match(scheme, pkgs, idx, ports)
+	found := vuln.Match(scheme, pkgs, idx, ports, inv.OS.Kernel)
 	ids := make([]string, 0, len(found))
 	for _, f := range found {
 		ids = append(ids, f.VulnID)
@@ -347,7 +347,8 @@ func (s *Server) rematchHost(ctx context.Context, hostID string) error {
 		risk, comps := vuln.Score(in)
 		rj, _ := json.Marshal(comps)
 		stored = append(stored, store.StoredFinding{HostID: hostID, VulnID: f.VulnID, Package: f.Package, Installed: f.Installed, Fixed: f.Fixed,
-			Advisory: f.Advisory, Binaries: f.Binaries, Exposed: f.Exposed, Severity: in.Severity, Risk: risk, RiskJSON: string(rj)})
+			Advisory: f.Advisory, Binaries: f.Binaries, Exposed: f.Exposed, Severity: in.Severity, Risk: risk, RiskJSON: string(rj),
+			RebootRequired: f.RebootRequired})
 	}
 	added, resolved, err := s.db.ReplaceFindings(ctx, hostID, stored)
 	if err != nil {

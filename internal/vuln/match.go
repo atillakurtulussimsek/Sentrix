@@ -18,6 +18,9 @@ type Finding struct {
 	Binaries  []string
 	Exposed   string // evidence that the package's service listens on a network interface
 	DistroSev string
+	// RebootRequired is set when the finding is on the running kernel and a newer,
+	// installed but not yet booted kernel already contains the fix.
+	RebootRequired bool
 }
 
 // FixAvailable reports whether the distribution has released a fix.
@@ -68,8 +71,13 @@ type AffectedIndex map[string][]Affected
 // introduced <= installed (if introduced is set) and either no fix exists or
 // installed < fixed, compared with the distro's own version scheme. A finding is never
 // dropped unless the installed version is verified to be >= the distro fixed version.
-func Match(scheme version.Scheme, pkgs []protocol.Package, idx AffectedIndex, ports []protocol.ListeningPort) []Finding {
-	groups := groupPackages(scheme, pkgs)
+//
+// runningKernel is the host's kernel release (uname -r). Packages of other installed
+// kernels are not matched, because only the running kernel is exposed; see splitKernels.
+func Match(scheme version.Scheme, pkgs []protocol.Package, idx AffectedIndex, ports []protocol.ListeningPort, runningKernel string) []Finding {
+	active, inactive := splitKernels(scheme, pkgs, runningKernel)
+	pending := newestByKey(scheme, inactive)
+	groups := groupPackages(scheme, active)
 	type acc struct {
 		f        Finding
 		hasFix   bool
@@ -119,6 +127,11 @@ func Match(scheme version.Scheme, pkgs []protocol.Package, idx AffectedIndex, po
 		sort.Strings(r.advisory)
 		r.f.Advisory = strings.Join(r.advisory, " ")
 		r.f.Exposed = exposedEvidence(r.f, exposure)
+		if v, ok := pending[r.f.Package]; ok && r.f.Fixed != "" && !r.unfixed {
+			if c, err := version.Compare(scheme, v, r.f.Fixed); err == nil && c >= 0 {
+				r.f.RebootRequired = true
+			}
+		}
 		out = append(out, r.f)
 	}
 	sort.Slice(out, func(i, j int) bool {

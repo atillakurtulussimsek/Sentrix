@@ -24,7 +24,7 @@ func TestMatchDebianSourcePackages(t *testing.T) {
 		{Name: "zlib1g", Version: "1:1.2.13.dfsg-1", SourceName: "zlib", SourceVer: "1:1.2.13.dfsg-1"},
 	}
 	ports := []protocol.ListeningPort{{Proto: "tcp", Address: "0.0.0.0", Port: 22, Process: "sshd"}}
-	fs := Match(version.Dpkg, pkgs, idx, ports)
+	fs := Match(version.Dpkg, pkgs, idx, ports, "")
 	if len(fs) != 2 {
 		t.Fatalf("want 2 findings (openssl fixable, glibc unfixed), got %+v", fs)
 	}
@@ -39,7 +39,7 @@ func TestMatchDebianSourcePackages(t *testing.T) {
 	for i := range pkgs[:2] {
 		pkgs[i].Version, pkgs[i].SourceVer = "3.0.15-1~deb12u1", "3.0.15-1~deb12u1"
 	}
-	for _, f := range Match(version.Dpkg, pkgs, idx, nil) {
+	for _, f := range Match(version.Dpkg, pkgs, idx, nil, "") {
 		if f.VulnID == "CVE-2024-5535" {
 			t.Fatal("fixed package still reported")
 		}
@@ -58,7 +58,7 @@ func TestMatchRPMAndExposure(t *testing.T) {
 		{Name: "kernel-core", Version: "5.14.0-427.13.1.el9_4"},
 	}
 	ports := []protocol.ListeningPort{{Proto: "tcp", Address: "::", Port: 22, Process: "sshd"}, {Proto: "tcp", Address: "127.0.0.1", Port: 25, Process: "master"}}
-	fs := Match(version.RPM, pkgs, idx, ports)
+	fs := Match(version.RPM, pkgs, idx, ports, "")
 	if len(fs) != 1 || fs[0].VulnID != "CVE-2024-6387" || fs[0].Exposed == "" {
 		t.Fatalf("%+v", fs)
 	}
@@ -69,7 +69,7 @@ func TestMatchHighestFixWins(t *testing.T) {
 		{VulnID: "CVE-X", Fixed: "3.1.4-r6", Advisory: "A"},
 		{VulnID: "CVE-X", Fixed: "3.1.5-r0", Advisory: "B"},
 	}}
-	fs := Match(version.APK, []protocol.Package{{Name: "libcrypto3", Version: "3.1.4-r5", SourceName: "openssl"}}, idx, nil)
+	fs := Match(version.APK, []protocol.Package{{Name: "libcrypto3", Version: "3.1.4-r5", SourceName: "openssl"}}, idx, nil, "")
 	if len(fs) != 1 || fs[0].Fixed != "3.1.5-r0" || fs[0].Advisory != "A B" {
 		t.Fatalf("%+v", fs)
 	}

@@ -23,7 +23,7 @@
         <div class="max-w-sm truncate text-xs text-zinc-500" title="{{.Meta.Summary}}">{{.Meta.Summary}}</div></td>
       <td><a href="/packages/{{.Package}}" class="hover:underline">{{.Package}}</a>{{if gt (len .Binaries) 1}}<div class="text-[11px] text-zinc-500">{{join .Binaries ", "}}</div>{{end}}</td>
       <td class="font-mono text-xs">{{.Installed}}</td>
-      <td class="font-mono text-xs">{{if .Fixed}}{{.Fixed}}{{else}}<span class="text-zinc-400">{{t "host.noFix"}}</span>{{end}}{{with .Advisory}}<div class="font-sans text-[11px] text-zinc-500">{{.}}</div>{{end}}</td>
+      <td class="font-mono text-xs">{{if .Fixed}}{{.Fixed}}{{else}}<span class="text-zinc-400">{{t "host.noFix"}}</span>{{end}}{{if .RebootRequired}}<div><span class="badge badge-warn font-sans" title="{{t "vuln.rebootRequiredHint"}}">{{t "vuln.status.rebootRequired"}}</span></div>{{end}}{{with .Advisory}}<div class="font-sans text-[11px] text-zinc-500">{{.}}</div>{{end}}</td>
       <td class="text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400">{{range .Components}}<div><span class="inline-block w-10 text-right font-mono tabular-nums">{{printf "%+.0f" .Points}}</span> {{riskdetail .}}</div>{{end}}{{with .Exposed}}<div class="text-amber-600">{{exposed .}}</div>{{end}}</td>
     </tr>{{end}}</tbody>
   </table>

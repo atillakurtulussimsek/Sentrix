@@ -29,7 +29,7 @@
       <td class="font-mono text-xs">{{.Installed}}</td>
       <td class="font-mono text-xs">{{or .Fixed "—"}}</td>
       <td class="text-xs text-zinc-500">{{.Advisory}}</td>
-      <td>{{with .Exception}}<span class="badge badge-muted" title="{{.Reason}}">{{t (printf "exc.kind.%s" .Kind)}}</span>{{else}}<span class="badge badge-offline">{{t "vuln.status.open"}}</span>{{end}}</td>
+      <td>{{with .Exception}}<span class="badge badge-muted" title="{{.Reason}}">{{t (printf "exc.kind.%s" .Kind)}}</span>{{else}}{{if .RebootRequired}}<span class="badge badge-warn" title="{{t "vuln.rebootRequiredHint"}}">{{t "vuln.status.rebootRequired"}}</span>{{else}}<span class="badge badge-offline">{{t "vuln.status.open"}}</span>{{end}}{{end}}</td>
     </tr>{{end}}</tbody>
   </table>
   {{else}}<div class="empty">{{t "vuln.noneAffected"}}</div>{{end}}

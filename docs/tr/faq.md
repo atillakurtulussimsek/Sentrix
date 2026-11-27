@@ -48,3 +48,9 @@ indirilir.
 Evet. Her kullanıcı dilini kenar çubuğundaki, giriş sayfasındaki ya da *Hesap* ayarlarındaki seçiciden seçebilir.
 Sunucunun varsayılan dilini (bildirimlerde de kullanılır) `SENTRIX_LANGUAGE=en` ile değiştirebilirsiniz; bkz.
 [yapılandırma](configuration.md#dil).
+
+### Yama uyguladım, çekirdek CVE'si neden hâlâ açık?
+
+Yalnızca çalışan çekirdek dikkate alınır. Düzeltilmiş çekirdek kurulu ama sunucu yeniden başlatılmamışsa bulgu açık
+kalır ve **yeniden başlatma gerekli** olarak işaretlenir. Yeniden başlatmadan (ve sonraki envanterden) sonra kapanır;
+yedek olarak kurulu kalan eski çekirdekler yok sayılır.

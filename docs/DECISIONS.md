@@ -106,3 +106,11 @@ Short ADR entries: date, decision, alternatives, reason.
 - CLIs: `--lang` > `SENTRIX_LANGUAGE` > config `language` > `tr`; `LANG`/`LC_ALL` are deliberately ignored so Turkish stays the default. Acceptance scripts pin `SENTRIX_LANGUAGE=en` because they parse CLI output.
 - Risk components carry catalog keys (`msgs`) alongside the English `detail`, so stored findings render in any language; old rows fall back to `detail`.
 - Upstream data (CVE descriptions, distro/agent error text) is shown untranslated.
+
+## 2026-11-27 — Kernel findings follow the running kernel
+- Only the running kernel (inventory `kernel`, i.e. `uname -r`) can be exploited, so packages of other installed
+  kernels (dpkg `linux-image|modules|headers…-<release>`, RPM `kernel*` builds) are excluded from matching.
+- If the fix is already installed in a newer, not yet booted kernel, the finding stays open (the running kernel is
+  still vulnerable) but is flagged `reboot_required` (migration 009) and shown as "reboot required".
+- Filtering applies only when an installed kernel package matches the running release; otherwise (containers,
+  unknown release) matching stays unfiltered and conservative. APK is not filtered (one kernel per flavour).

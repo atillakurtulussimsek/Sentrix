@@ -315,6 +315,8 @@ type StoredFinding struct {
 	RiskJSON  string
 	FirstSeen time.Time
 	LastSeen  time.Time
+	// RebootRequired: the fix is installed in a newer kernel that is not running yet.
+	RebootRequired bool
 }
 
 // ReplaceFindings stores the current findings of a host. Findings that disappeared are
@@ -351,11 +353,11 @@ func (d *DB) ReplaceFindings(ctx context.Context, hostID string, fs []StoredFind
 		if f.Severity == "" {
 			f.Severity = "unknown"
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO findings(host_id, vuln_id, package, installed, fixed, advisory, binaries, exposed, severity, risk, risk_json, first_seen, last_seen)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(host_id, vuln_id, package) DO UPDATE SET installed = excluded.installed, fixed = excluded.fixed,
+		if _, err := tx.ExecContext(ctx, `INSERT INTO findings(host_id, vuln_id, package, installed, fixed, advisory, binaries, exposed, severity, risk, risk_json, first_seen, last_seen, reboot_required)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(host_id, vuln_id, package) DO UPDATE SET installed = excluded.installed, fixed = excluded.fixed,
 			advisory = excluded.advisory, binaries = excluded.binaries, exposed = excluded.exposed, severity = excluded.severity, risk = excluded.risk,
-			risk_json = excluded.risk_json, last_seen = excluded.last_seen`,
-			hostID, f.VulnID, f.Package, f.Installed, f.Fixed, f.Advisory, strings.Join(f.Binaries, ","), f.Exposed, f.Severity, f.Risk, f.RiskJSON, now, now); err != nil {
+			risk_json = excluded.risk_json, last_seen = excluded.last_seen, reboot_required = excluded.reboot_required`,
+			hostID, f.VulnID, f.Package, f.Installed, f.Fixed, f.Advisory, strings.Join(f.Binaries, ","), f.Exposed, f.Severity, f.Risk, f.RiskJSON, now, now, boolInt(f.RebootRequired)); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -374,13 +376,14 @@ func (d *DB) ReplaceFindings(ctx context.Context, hostID string, fs []StoredFind
 	return added, resolved, tx.Commit()
 }
 
-const findingCols = `host_id, vuln_id, package, installed, fixed, advisory, binaries, exposed, severity, risk, risk_json, first_seen, last_seen`
+const findingCols = `host_id, vuln_id, package, installed, fixed, advisory, binaries, exposed, severity, risk, risk_json, first_seen, last_seen, reboot_required`
 
 func scanFinding(sc interface{ Scan(...any) error }) (StoredFinding, error) {
 	var f StoredFinding
 	var bins string
-	var fs, ls int64
-	err := sc.Scan(&f.HostID, &f.VulnID, &f.Package, &f.Installed, &f.Fixed, &f.Advisory, &bins, &f.Exposed, &f.Severity, &f.Risk, &f.RiskJSON, &fs, &ls)
+	var fs, ls, rb int64
+	err := sc.Scan(&f.HostID, &f.VulnID, &f.Package, &f.Installed, &f.Fixed, &f.Advisory, &bins, &f.Exposed, &f.Severity, &f.Risk, &f.RiskJSON, &fs, &ls, &rb)
+	f.RebootRequired = rb != 0
 	f.Binaries = SplitTags(bins)
 	f.FirstSeen, f.LastSeen = time.Unix(fs, 0), time.Unix(ls, 0)
 	return f, err

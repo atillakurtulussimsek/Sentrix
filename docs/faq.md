@@ -46,3 +46,9 @@ Mirror the feed files and point `feeds.*_url` to your mirror; agents are downloa
 Yes. Each user picks their language from the picker in the sidebar, on the sign-in page or in *Account* settings.
 Change the server default (also used for notifications) with `SENTRIX_LANGUAGE=en`; see
 [configuration](configuration.md#language).
+
+### Why is a kernel CVE still open after I patched?
+
+Only the running kernel counts. If a fixed kernel is installed but the host has not been rebooted, the finding stays
+open and is marked **reboot required**. After the reboot (and the next inventory) it closes; old fallback kernels
+that are still installed are ignored.

@@ -281,5 +281,7 @@
   "audit.action.command.result.patch_security_only": "Command result: security patch",
   "audit.action.command.result.patch_all": "Command result: full patch",
   "audit.action.command.result.reboot": "Command result: reboot",
-  "audit.action.command.result.restart_service": "Command result: service restart"
+  "audit.action.command.result.restart_service": "Command result: service restart",
+  "vuln.status.rebootRequired": "reboot required",
+  "vuln.rebootRequiredHint": "The fix is installed in a newer kernel; reboot the host to run it. Until then the running kernel is still vulnerable."
 }

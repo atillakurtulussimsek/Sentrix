@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Agent installer `install.sh --lang tr|en`; enrolment one-liners pass the server language.
 - Translatable risk-score explanations; Turkish documentation (`README.md`, `docs/tr/`, `SECURITY.tr.md`, `CONTRIBUTING.tr.md`); English README moved to `README.en.md`.
 
+### Fixed
+- Kernel CVEs are matched against the running kernel only: fallback kernels that are installed but not booted no longer keep findings open after a reboot, and a newly installed but not yet booted kernel no longer hides a vulnerable running kernel (RPM). Findings whose fix waits for a reboot are marked "reboot required".
+
 ### Changed
 - docker-compose host ports are configurable (`SENTRIX_UI_PORT`, `SENTRIX_GATEWAY_PORT`) for hosts where 8080/8443 are taken.
 - Message catalogs split per language and area (`web/i18n/<lang>/*.json`); a parity test enforces identical keys and format verbs.
