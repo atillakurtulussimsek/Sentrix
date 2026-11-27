@@ -51,6 +51,24 @@ func (c *client) get(ctx context.Context, path string, out any) error {
 	return c.do(req, out)
 }
 
+// getRaw returns the response body of a GET request; the caller closes it.
+func (c *client) getRaw(ctx context.Context, path string) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		resp.Body.Close()
+		return nil, &HTTPError{Status: resp.StatusCode, Body: strings.TrimSpace(string(b))}
+	}
+	return resp.Body, nil
+}
+
 func (c *client) do(req *http.Request, out any) error {
 	resp, err := c.http.Do(req)
 	if err != nil {

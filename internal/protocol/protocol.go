@@ -17,6 +17,9 @@ const (
 	PathCommands  = "/agent/v1/commands"
 	PathResults   = "/agent/v1/results"
 	PathRenew     = "/agent/v1/renew"
+	// PathAgentRelease + "/{arch}" returns the signed manifest of the agent release the
+	// server offers; + "/{arch}/binary" returns the binary.
+	PathAgentRelease = "/agent/v1/release"
 )
 
 // EnrollRequest exchanges a one-time token and a CSR for a client certificate.

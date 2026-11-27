@@ -28,6 +28,9 @@ Lists in environment variables are comma separated.
 | `feeds.nvd_api_key` | `SENTRIX_NVD_API_KEY` | – | optional NVD key (faster CVSS enrichment) |
 | `feeds.osv_base_url`, `debian_url`, `kev_url`, `epss_url`, `nvd_url` | `SENTRIX_OSV_BASE_URL`, … | official URLs | mirrors / air-gapped setups |
 | `language` | `SENTRIX_LANGUAGE` | `tr` | default language: `tr` or `en`. Used for the UI until a user picks their own language (sidebar, sign-in page, *Account* settings), and always for notifications |
+| `agent_updates.mode` | `SENTRIX_AGENT_UPDATES` | `notify` | `off`, `notify` (show outdated agents) or `auto` (agents update themselves); admins can change it under *Settings → Enrolment* |
+| `agent_updates.release_url` | `SENTRIX_AGENT_RELEASE_URL` | GitHub latest release | where signed agent releases are fetched; empty = only releases placed in `agent_dir` |
+| `agent_updates.interval` | `SENTRIX_AGENT_UPDATES_INTERVAL` | `6h` | release check interval |
 | `log_level` | `SENTRIX_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `dev_insecure_cookies` | `SENTRIX_DEV_INSECURE_COOKIES` | `false` | never in production |
 | – | `SENTRIX_SECRET_KEY` | generated `secret.key` | base64 32-byte key for secrets at rest |
@@ -54,6 +57,7 @@ sentrix-server serve | token create | ca-fingerprint | hosts | findings | stats 
 | `watch_services` | `SENTRIX_WATCH_SERVICES` | – | systemd units to watch (also set per host in the UI) |
 | `tls_endpoints` | `SENTRIX_TLS_ENDPOINTS` | – | `host:port` certificates to check (also per host in the UI) |
 | `allow_patching` | `SENTRIX_ALLOW_PATCHING` | `true` | `false` = read-only agent (dry runs still work) |
+| `allow_self_update` | `SENTRIX_ALLOW_SELF_UPDATE` | `true` (`false` in .deb/.rpm) | install agent releases offered by the server (only release-key signed binaries); `install.sh --no-self-update` sets `false` |
 | `proc_root` | `SENTRIX_PROC_ROOT` | `/proc` | for containers with the host's /proc mounted |
 | `docker_socket` | `SENTRIX_DOCKER_SOCKET` | `/var/run/docker.sock` | container metrics if present |
 | `log_level` | `SENTRIX_LOG_LEVEL` | `info` | |

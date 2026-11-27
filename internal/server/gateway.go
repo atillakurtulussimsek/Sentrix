@@ -43,6 +43,8 @@ func (s *Server) GatewayHandler() http.Handler {
 			r.Post(path, h)
 		}
 		r.Get(protocol.PathCommands, s.handleCommandsPoll)
+		r.Get(protocol.PathAgentRelease+"/{arch}", s.handleAgentReleaseManifest)
+		r.Get(protocol.PathAgentRelease+"/{arch}/binary", s.handleAgentReleaseBinary)
 	})
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
 	return r

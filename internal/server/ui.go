@@ -73,6 +73,8 @@ func (s *Server) UIHandler() http.Handler {
 			r.Get("/settings/enrollment", s.handleEnrollment)
 			r.Post("/settings/enrollment", s.handleEnrollmentCreate)
 			r.Post("/settings/enrollment/{id}/delete", s.handleEnrollmentDelete)
+			r.Post("/settings/agent-updates", s.handleAgentUpdatesMode)
+			r.Post("/settings/agent-updates/check", s.handleAgentUpdatesCheck)
 			r.Get("/audit", s.handleAudit)
 			r.Post("/hosts/{id}/revoke", s.handleHostRevoke)
 			r.Post("/hosts/{id}/delete", s.handleHostDelete)
@@ -372,6 +374,9 @@ func (s *Server) hostPage(w http.ResponseWriter, r *http.Request, tab string) (s
 	_ = json.Unmarshal([]byte(h.StateJSON), &st)
 	d := map[string]any{"Host": h, "Status": s.hostStatus(h), "Tab": tab, "State": st, "OS": s.hostOS(r.Context(), h.ID)}
 	d["Tabs"] = s.hostTabs(r.Context(), h.ID)
+	if rel, ok := s.hostAgentUpdate(r.Context(), h); ok {
+		d["AgentUpdate"] = rel.Manifest.Version
+	}
 	return h, d, true
 }
 

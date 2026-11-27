@@ -46,3 +46,18 @@ no command lines, no environment variables, no credentials.
 
 Reading all package databases and `/proc/*/fd` (for port owners) and applying updates require root. Run the
 agent with `allow_patching: false` if you only want monitoring and vulnerability data.
+
+## Self-update
+
+The server can offer a newer agent (`update_agent`, a typed action with a pinned version, architecture and
+SHA-256). The agent downloads the manifest and binary over its mTLS connection and installs it only if:
+
+- the manifest is signed with the **Varkhe Digital release key** (Ed25519; the public key is compiled into the
+  agent, the private key exists only as a CI secret used when a release tag is built),
+- version, architecture and digest match the command and the signed manifest, and the binary matches the digest,
+- the version is newer than the running agent (no downgrades).
+
+The binary is replaced atomically and the agent re-executes itself (same PID; the host is not rebooted). A
+compromised Sentrix server can therefore *offer* an update but cannot make agents run code that was not
+released and signed. Set `allow_self_update: false` to opt a host out; packages (.deb/.rpm) ship with it off
+because apt/dnf manage the binary.

@@ -4,3 +4,5 @@ state_dir: /var/lib/sentrix-agent
 interval: 10s
 send_interval: 30s
 allow_patching: true
+# Package installs are updated by apt/dnf; do not let the agent replace its own binary.
+allow_self_update: false

@@ -49,3 +49,18 @@ Dosya içerikleri, komut satırları, ortam değişkenleri ve kimlik bilgileri g
 
 Tüm paket veritabanlarını ve `/proc/*/fd` dizinini (port sahipleri için) okumak ve güncellemeleri uygulamak root
 yetkisi gerektirir. Yalnızca izleme ve zafiyet verisi istiyorsanız ajanı `allow_patching: false` ile çalıştırın.
+
+## Kendi kendini güncelleme
+
+Sunucu daha yeni bir ajan önerebilir (`update_agent`: sürüm, mimari ve SHA-256 değeri sabitlenmiş türlü bir
+işlem). Ajan bildirimi ve ikili dosyayı mTLS bağlantısı üzerinden indirir ve yalnızca şu koşullarda kurar:
+
+- bildirim **Varkhe Digital sürüm anahtarıyla** imzalanmışsa (Ed25519; açık anahtar ajanın içine derlenir, gizli
+  anahtar yalnızca sürüm etiketi derlenirken kullanılan bir CI sırrı olarak bulunur),
+- sürüm, mimari ve özet hem komutla hem imzalı bildirimle eşleşiyor ve dosya özetle uyuşuyorsa,
+- sürüm çalışan ajandan yeniyse (eski sürüme dönüş yok).
+
+Dosya atomik olarak değiştirilir ve ajan kendini yeniden çalıştırır (aynı PID; sunucu yeniden başlatılmaz).
+Böylece ele geçirilmiş bir Sentrix sunucusu güncelleme *önerebilir*, ama yayımlanmamış ve imzalanmamış kodu
+ajanlara çalıştıramaz. Bir sunucuyu dışarıda tutmak için `allow_self_update: false` ayarlayın; paketler
+(.deb/.rpm) bu ayar kapalı gelir, çünkü dosyayı apt/dnf yönetir.

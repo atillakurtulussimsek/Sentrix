@@ -98,6 +98,10 @@ nfpms:
 checksum:
   name_template: checksums.txt
 
+
+# Signed agent manifests (<binary>.sig.json) are produced and attached by the release
+# workflow after GoReleaser (see .github/workflows/release.yml and tools/signagent).
+
 changelog:
   use: git
   filters:

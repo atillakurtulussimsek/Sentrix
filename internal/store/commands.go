@@ -163,3 +163,12 @@ func errNoRows(err error) error {
 	}
 	return err
 }
+
+// LastHostCommand returns the most recent command of the given action for a host.
+func (d *DB) LastHostCommand(ctx context.Context, hostID string, action protocol.Action) (CommandRow, bool, error) {
+	rows, err := d.listCommands(ctx, `WHERE host_id = ? AND action = ? ORDER BY created_at DESC LIMIT 1`, hostID, string(action))
+	if err != nil || len(rows) == 0 {
+		return CommandRow{}, false, err
+	}
+	return rows[0], true, nil
+}

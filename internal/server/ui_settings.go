@@ -182,7 +182,7 @@ func (s *Server) enrollmentPage(w http.ResponseWriter, r *http.Request, status i
 	for _, t := range toks {
 		views = append(views, tokenView{t, time.Now().After(t.ExpiresAt)})
 	}
-	d := map[string]any{"Tokens": views, "Fingerprint": s.ca.Fingerprint()}
+	d := map[string]any{"Tokens": views, "Fingerprint": s.ca.Fingerprint(), "AgentUpdates": s.agentUpdatesView(r.Context())}
 	if newTok != nil {
 		d["NewToken"] = newTok
 	}

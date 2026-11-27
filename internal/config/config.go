@@ -32,9 +32,10 @@ type Server struct {
 	HeartbeatInterval time.Duration `yaml:"heartbeat_interval" env:"SENTRIX_HEARTBEAT_INTERVAL"`
 	AgentCertValidity time.Duration `yaml:"agent_cert_validity" env:"SENTRIX_AGENT_CERT_VALIDITY"`
 
-	Retention Retention `yaml:"retention"`
-	Feeds     Feeds     `yaml:"feeds"`
-	LogLevel  string    `yaml:"log_level" env:"SENTRIX_LOG_LEVEL"`
+	Retention    Retention    `yaml:"retention"`
+	Feeds        Feeds        `yaml:"feeds"`
+	AgentUpdates AgentUpdates `yaml:"agent_updates"`
+	LogLevel     string       `yaml:"log_level" env:"SENTRIX_LOG_LEVEL"`
 	// Directory with agent binaries (sentrix-agent-linux-amd64, -arm64) served at
 	// /download/ for the install.sh one-liner. Empty disables downloads.
 	AgentDir string `yaml:"agent_dir" env:"SENTRIX_AGENT_DIR"`
@@ -65,6 +66,18 @@ type Feeds struct {
 	OfflineAfter time.Duration `yaml:"stale_after" env:"SENTRIX_FEEDS_STALE_AFTER"`
 }
 
+// AgentUpdates configures signed agent self-updates.
+type AgentUpdates struct {
+	// Mode: "off", "notify" (default: show that an update is available) or "auto"
+	// (queue update_agent for outdated online agents). Admins can change it in the UI.
+	Mode string `yaml:"mode" env:"SENTRIX_AGENT_UPDATES"`
+	// ReleaseURL is where signed agent releases are fetched from
+	// (<url>/sentrix-agent-linux-<arch> and .sig.json). Empty disables fetching;
+	// releases placed in agent_dir are still offered.
+	ReleaseURL string        `yaml:"release_url" env:"SENTRIX_AGENT_RELEASE_URL"`
+	Interval   time.Duration `yaml:"interval" env:"SENTRIX_AGENT_UPDATES_INTERVAL"`
+}
+
 // DefaultServer returns defaults.
 func DefaultServer() Server {
 	return Server{
@@ -88,6 +101,11 @@ func DefaultServer() Server {
 			NVDURL:       "https://services.nvd.nist.gov/rest/json/cves/2.0",
 			OfflineAfter: 72 * time.Hour,
 		},
+		AgentUpdates: AgentUpdates{
+			Mode:       "notify",
+			ReleaseURL: "https://github.com/atillakurtulussimsek/Sentrix/releases/latest/download",
+			Interval:   6 * time.Hour,
+		},
 		LogLevel: "info",
 		Language: "tr",
 	}
@@ -107,22 +125,26 @@ type Agent struct {
 	DockerSocket   string        `yaml:"docker_socket" env:"SENTRIX_DOCKER_SOCKET"`
 	InventoryEvery time.Duration `yaml:"inventory_interval" env:"SENTRIX_INVENTORY_INTERVAL"`
 	// AllowPatching must be true for the agent to execute patch/reboot/restart actions.
-	AllowPatching bool   `yaml:"allow_patching" env:"SENTRIX_ALLOW_PATCHING"`
-	LogLevel      string `yaml:"log_level" env:"SENTRIX_LOG_LEVEL"`
+	AllowPatching bool `yaml:"allow_patching" env:"SENTRIX_ALLOW_PATCHING"`
+	// AllowSelfUpdate lets the server ask the agent to install a newer agent release.
+	// Only binaries signed with the Varkhe Digital release key are accepted.
+	AllowSelfUpdate bool   `yaml:"allow_self_update" env:"SENTRIX_ALLOW_SELF_UPDATE"`
+	LogLevel        string `yaml:"log_level" env:"SENTRIX_LOG_LEVEL"`
 }
 
 // DefaultAgent returns agent defaults.
 func DefaultAgent() Agent {
 	return Agent{
-		StateDir:       "/var/lib/sentrix-agent",
-		Interval:       10 * time.Second,
-		SendInterval:   30 * time.Second,
-		BufferMaxMB:    50,
-		ProcRoot:       "/proc",
-		DockerSocket:   "/var/run/docker.sock",
-		InventoryEvery: 6 * time.Hour,
-		AllowPatching:  true,
-		LogLevel:       "info",
+		StateDir:        "/var/lib/sentrix-agent",
+		Interval:        10 * time.Second,
+		SendInterval:    30 * time.Second,
+		BufferMaxMB:     50,
+		ProcRoot:        "/proc",
+		DockerSocket:    "/var/run/docker.sock",
+		InventoryEvery:  6 * time.Hour,
+		AllowPatching:   true,
+		AllowSelfUpdate: true,
+		LogLevel:        "info",
 	}
 }
 

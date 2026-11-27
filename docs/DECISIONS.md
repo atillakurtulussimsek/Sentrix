@@ -114,3 +114,14 @@ Short ADR entries: date, decision, alternatives, reason.
   still vulnerable) but is flagged `reboot_required` (migration 009) and shown as "reboot required".
 - Filtering applies only when an installed kernel package matches the running release; otherwise (containers,
   unknown release) matching stays unfiltered and conservative. APK is not filtered (one kernel per flavour).
+
+## 2026-11-27 — Agent self-update trust model
+- Owner's choice: agents trust only binaries signed with an offline release key (Ed25519, public key compiled into
+  the agent, private key only as the `SENTRIX_RELEASE_SIGNING_KEY` CI secret). A compromised server can offer but not
+  forge updates, so the "no arbitrary code from the server" property holds.
+- Owner's choice: default mode `notify`; `auto` is opt-in in the UI.
+- Releases are signed in release.yml after GoReleaser (`tools/signagent`), manifests attached as
+  `sentrix-agent-linux-<arch>.sig.json`; the server downloads and re-verifies them (or uses verified ones in `agent_dir`).
+- Version binding (version, arch, sha256, size in the signed message) and "newer only" prevent replay/downgrade.
+- The update re-execs the agent (`syscall.Exec`), independent of systemd. .deb/.rpm installs default to
+  `allow_self_update: false` so package managers stay authoritative.

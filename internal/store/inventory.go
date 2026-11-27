@@ -231,3 +231,21 @@ func (d *DB) CountPackages(ctx context.Context, hostID string) (int, error) {
 	err := d.sql.QueryRowContext(ctx, `SELECT COUNT(*) FROM packages WHERE host_id = ?`, hostID).Scan(&n)
 	return n, err
 }
+
+// HostArches returns the machine architecture (uname -m style) reported per host.
+func (d *DB) HostArches(ctx context.Context) (map[string]string, error) {
+	rows, err := d.sql.QueryContext(ctx, `SELECT host_id, arch FROM host_inventory`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, arch string
+		if err := rows.Scan(&id, &arch); err != nil {
+			return nil, err
+		}
+		out[id] = arch
+	}
+	return out, rows.Err()
+}

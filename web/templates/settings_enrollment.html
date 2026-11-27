@@ -35,4 +35,29 @@
     {{else}}<div class="empty">{{t "enroll.empty"}}</div>{{end}}
   </section>
 </div>
+{{with .Data.AgentUpdates}}
+<section class="card mt-6 space-y-4 p-5">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h2 class="font-semibold">{{t "agentupd.title"}}</h2>
+      <p class="mt-1 max-w-2xl text-sm text-zinc-500">{{t "agentupd.help"}}</p>
+    </div>
+    <form method="post" action="/settings/agent-updates/check"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="btn-secondary">{{t "agentupd.checkNow"}}</button></form>
+  </div>
+  <form method="post" action="/settings/agent-updates" class="flex flex-wrap items-end gap-3">
+    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+    <label class="block"><span class="label">{{t "agentupd.mode"}}</span>
+      <select name="mode" class="input mt-1">
+        {{range list "off" "notify" "auto"}}<option value="{{.}}"{{if eq . $.Data.AgentUpdates.Mode}} selected{{end}}>{{t (printf "agentupd.mode.%s" .)}}</option>{{end}}
+      </select></label>
+    <button class="btn-primary">{{t "common.save"}}</button>
+  </form>
+  <dl class="grid gap-3 text-sm sm:grid-cols-3">
+    <div><dt class="label">{{t "agentupd.latest"}}</dt><dd class="mt-1">{{range .Releases}}<div><span class="font-mono">{{.Version}}</span> <span class="text-xs text-zinc-500">{{.Arch}} · {{t (printf "agentupd.source.%s" .Source)}}</span></div>{{else}}<span class="text-zinc-500">{{t "agentupd.noRelease"}}</span>{{end}}</dd></div>
+    <div><dt class="label">{{t "agentupd.outdated"}}</dt><dd class="mt-1">{{.Outdated}}</dd></div>
+    <div><dt class="label">{{t "agentupd.lastCheck"}}</dt><dd class="mt-1">{{if .CheckedAt.IsZero}}{{t "time.never"}}{{else}}{{reltime .CheckedAt}}{{end}}{{if .NoSigned}}<div class="text-xs text-zinc-500">{{t "agentupd.noSignedLatest"}}</div>{{end}}{{with .CheckErr}}<div class="text-xs text-amber-600">{{.}}</div>{{end}}</dd></div>
+  </dl>
+  <p class="text-xs text-zinc-500">{{t "agentupd.security"}}</p>
+</section>
+{{end}}
 {{end}}

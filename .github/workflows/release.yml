@@ -23,6 +23,19 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Agent self-update: sign the exact binaries GoReleaser uploaded and attach the
+      # manifests. Fails (and so marks the release incomplete) without the signing key.
+      - name: Sign agent binaries
+        env:
+          SENTRIX_RELEASE_SIGNING_KEY: ${{ secrets.SENTRIX_RELEASE_SIGNING_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          for arch in amd64 arm64; do
+            bin=$(ls dist/sentrix-agent_linux_${arch}_*/sentrix-agent)
+            go run ./tools/signagent -version "$GITHUB_REF_NAME" -name "sentrix-agent-linux-$arch" -in "$bin" -out "dist/sentrix-agent-linux-$arch.sig.json"
+          done
+          gh release upload "$GITHUB_REF_NAME" dist/sentrix-agent-linux-*.sig.json --clobber
   image:
     runs-on: ubuntu-latest
     steps:

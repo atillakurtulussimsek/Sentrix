@@ -29,6 +29,8 @@ type Agent struct {
 	watchServices []string
 	tlsEndpoints  []string
 
+	restartHook func() // replaces the post-update re-exec in tests
+
 	// hooks registered by subsystems (collectors, inventory, executor)
 	loops  []func(context.Context)
 	invNow chan struct{}

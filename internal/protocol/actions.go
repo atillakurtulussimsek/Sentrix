@@ -22,12 +22,15 @@ const (
 	ActionPatchAll          Action = "patch_all"
 	ActionReboot            Action = "reboot"
 	ActionRestartService    Action = "restart_service"
+	// ActionUpdateAgent replaces the agent binary with a release signed by the
+	// Varkhe Digital release key (verified by the agent, see internal/selfupdate).
+	ActionUpdateAgent Action = "update_agent"
 )
 
 // KnownActions lists every action an agent accepts.
 var KnownActions = []Action{
 	ActionRefreshInventory, ActionScan, ActionPatchPackages, ActionPatchSecurityOnly,
-	ActionPatchAll, ActionReboot, ActionRestartService,
+	ActionPatchAll, ActionReboot, ActionRestartService, ActionUpdateAgent,
 }
 
 // Command is an instruction from the server. ID makes delivery idempotent: agents
@@ -53,6 +56,15 @@ type RestartServiceParams struct {
 // RebootParams controls a reboot.
 type RebootParams struct {
 	DelaySeconds int `json:"delay_seconds,omitempty"`
+}
+
+// UpdateAgentParams pins the release the agent must install. The agent fetches the
+// signed manifest and binary from the gateway and refuses anything that does not
+// match these values or is not signed by the release key.
+type UpdateAgentParams struct {
+	Version string `json:"version"`
+	Arch    string `json:"arch"`
+	SHA256  string `json:"sha256"`
 }
 
 // Command result states.
@@ -97,6 +109,9 @@ var (
 	// systemd unit names (optionally with @instance and a type suffix).
 	unitNameRe  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9:_.@\-]{0,127}$`)
 	commandIDRe = regexp.MustCompile(`^[A-Za-z0-9\-]{1,64}$`)
+	// Agent self-update parameters.
+	releaseVersionRe = regexp.MustCompile(`^v\d{1,4}\.\d{1,4}\.\d{1,4}$`)
+	sha256Re         = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
 // ErrUnknownAction is returned for any action outside KnownActions.
@@ -157,6 +172,14 @@ func (c Command) Validate() error {
 		}
 		if p.DelaySeconds < 0 || p.DelaySeconds > 3600 {
 			return errors.New("reboot: delay out of range")
+		}
+	case ActionUpdateAgent:
+		var p UpdateAgentParams
+		if err := decodeStrict(c.Params, &p); err != nil {
+			return fmt.Errorf("update_agent params: %w", err)
+		}
+		if !releaseVersionRe.MatchString(p.Version) || (p.Arch != "amd64" && p.Arch != "arm64") || !sha256Re.MatchString(p.SHA256) {
+			return errors.New("update_agent: invalid version, arch or sha256")
 		}
 	default:
 		return fmt.Errorf("%w: %q", ErrUnknownAction, c.Action)

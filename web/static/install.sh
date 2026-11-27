@@ -8,6 +8,7 @@
 #   --hostname NAME         report this hostname instead of the system's
 #   --download-url URL      where to fetch sentrix-agent-linux-<arch> (default: this server)
 #   --no-patching           install read-only (allow_patching: false)
+#   --no-self-update        never install agent updates offered by the server (allow_self_update: false)
 #   --lang tr|en            installer and agent CLI language (default: tr)
 set -eu
 
@@ -18,6 +19,7 @@ FP=""
 NAME=""
 DOWNLOAD=""
 ALLOW_PATCHING=true
+ALLOW_SELF_UPDATE=true
 LNG=tr
 BADOPT=""
 RELEASES="https://github.com/atillakurtulussimsek/Sentrix/releases/latest/download"
@@ -33,6 +35,7 @@ while [ $# -gt 0 ]; do
     --hostname) NAME="$2"; shift 2 ;;
     --download-url) DOWNLOAD="$2"; shift 2 ;;
     --no-patching) ALLOW_PATCHING=false; shift ;;
+    --no-self-update) ALLOW_SELF_UPDATE=false; shift ;;
     --lang) LNG="$2"; shift 2 ;;
     --lang=*) LNG="${1#--lang=}"; shift ;;
     -h|--help) sed -n '2,14p' "$0" 2>/dev/null || true; exit 0 ;;
@@ -107,6 +110,7 @@ server_url: $SERVER
 interval: 10s
 send_interval: 30s
 allow_patching: $ALLOW_PATCHING
+allow_self_update: $ALLOW_SELF_UPDATE
 YAML
   chmod 0600 /etc/sentrix/agent.yaml
 fi

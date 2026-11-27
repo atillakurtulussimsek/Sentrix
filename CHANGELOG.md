@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Signed agent self-update: the server fetches release-key signed agent builds (GitHub release by default), shows outdated agents, and in "automatic" mode asks them to update; agents verify the Ed25519 signature, digest and version before replacing themselves and re-executing (no host reboot). Mode per server in *Settings → Enrolment*; per-host opt-out `allow_self_update: false` / `install.sh --no-self-update`.
 - Full Turkish translation; Turkish is now the default language (`language: tr` / `SENTRIX_LANGUAGE`, `en` also supported).
 - Per-user UI language: picker in the sidebar, on the sign-in/setup pages and in Account settings (stored per account; "server default" option).
 - Notifications, digests, default rule/plan names and stored patch messages use the server default language.

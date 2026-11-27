@@ -27,6 +27,7 @@
       <form method="post" action="/hosts/{{.Data.Host.ID}}/actions" class="flex gap-2"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="restart_service"><input name="service" required placeholder="nginx.service" class="input"><button class="btn-secondary whitespace-nowrap">{{t "host.restart"}}</button></form>
       <form method="post" action="/hosts/{{.Data.Host.ID}}/actions" class="space-y-2" data-confirm="{{t "host.rebootConfirm" .Data.Host.Hostname}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reboot">
         <label class="flex items-center gap-2 text-xs"><input type="checkbox" name="confirm" value="1"> {{t "host.rebootAck"}}</label><button class="btn-danger w-full">{{t "host.rebootBtn"}}</button></form>
+      {{with .Data.AgentUpdate}}<form method="post" action="/hosts/{{$.Data.Host.ID}}/actions" data-confirm="{{t "agentupd.confirm" .}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="action" value="update_agent"><button class="btn-secondary w-full">{{t "agentupd.updateBtn" .}}</button></form>{{end}}
     </section>
     {{end}}
     {{if can .User "admin"}}

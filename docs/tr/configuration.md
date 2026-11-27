@@ -28,6 +28,9 @@ kullanır (`30s`, `5m`, `72h`). Ortam değişkenlerindeki listeler virgülle ayr
 | `feeds.nvd_api_key` | `SENTRIX_NVD_API_KEY` | – | isteğe bağlı NVD anahtarı (daha hızlı CVSS zenginleştirme) |
 | `feeds.osv_base_url`, `debian_url`, `kev_url`, `epss_url`, `nvd_url` | `SENTRIX_OSV_BASE_URL`, … | resmi URL'ler | yansılar / internetten yalıtılmış kurulumlar |
 | `language` | `SENTRIX_LANGUAGE` | `tr` | varsayılan dil: `tr` ya da `en`. Kullanıcı kendi dilini seçene kadar (kenar çubuğu, giriş sayfası, *Hesap* ayarları) arayüzde, bildirimlerde ise her zaman kullanılır |
+| `agent_updates.mode` | `SENTRIX_AGENT_UPDATES` | `notify` | `off`, `notify` (eski ajanları gösterir) ya da `auto` (ajanlar kendini günceller); yöneticiler *Ayarlar → Kayıt* sayfasından değiştirebilir |
+| `agent_updates.release_url` | `SENTRIX_AGENT_RELEASE_URL` | GitHub son sürüm | imzalı ajan sürümlerinin indirildiği adres; boş = yalnızca `agent_dir` içine konan sürümler |
+| `agent_updates.interval` | `SENTRIX_AGENT_UPDATES_INTERVAL` | `6h` | sürüm kontrol aralığı |
 | `log_level` | `SENTRIX_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `dev_insecure_cookies` | `SENTRIX_DEV_INSECURE_COOKIES` | `false` | üretimde asla kullanmayın |
 | – | `SENTRIX_SECRET_KEY` | üretilen `secret.key` | depolanan sırlar için base64 kodlu 32 baytlık anahtar |
@@ -54,6 +57,7 @@ sentrix-server serve | token create | ca-fingerprint | hosts | findings | stats 
 | `watch_services` | `SENTRIX_WATCH_SERVICES` | – | izlenecek systemd birimleri (arayüzde sunucu başına da ayarlanabilir) |
 | `tls_endpoints` | `SENTRIX_TLS_ENDPOINTS` | – | sertifikası denetlenecek `host:port` adresleri (arayüzde sunucu başına da ayarlanabilir) |
 | `allow_patching` | `SENTRIX_ALLOW_PATCHING` | `true` | `false` = salt okunur ajan (deneme çalıştırmaları yine çalışır) |
+| `allow_self_update` | `SENTRIX_ALLOW_SELF_UPDATE` | `true` (.deb/.rpm'de `false`) | sunucunun önerdiği ajan sürümlerini kurar (yalnızca sürüm anahtarıyla imzalı dosyalar); `install.sh --no-self-update` `false` yapar |
 | `proc_root` | `SENTRIX_PROC_ROOT` | `/proc` | sunucunun /proc dizini bağlanmış konteynerler için |
 | `docker_socket` | `SENTRIX_DOCKER_SOCKET` | `/var/run/docker.sock` | varsa konteyner metrikleri |
 | `log_level` | `SENTRIX_LOG_LEVEL` | `info` | |

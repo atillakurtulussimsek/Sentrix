@@ -150,6 +150,16 @@ func (s *Server) handleHostAction(w http.ResponseWriter, r *http.Request) {
 		params = protocol.RebootParams{}
 	case protocol.ActionRestartService:
 		params = protocol.RestartServiceParams{Name: strings.TrimSpace(r.PostFormValue("service"))}
+	case protocol.ActionUpdateAgent:
+		h, _ := s.db.GetHost(r.Context(), id)
+		rel, ok := s.hostAgentUpdate(r.Context(), h)
+		if !ok {
+			s.setFlash(w, "error", s.t(r, "agentupd.noneAvailable"))
+			http.Redirect(w, r, "/hosts/"+id+"/patches", http.StatusSeeOther) //nolint:gosec // local path
+			return
+		}
+		m := rel.Manifest
+		params = protocol.UpdateAgentParams{Version: m.Version, Arch: m.Arch, SHA256: m.SHA256}
 	default:
 		s.httpError(w, r, 400, s.t(r, "patch.action.unsupported"))
 		return

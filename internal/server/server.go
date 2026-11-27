@@ -56,6 +56,7 @@ type Server struct {
 	now            func() time.Time
 	alertMu        sync.Mutex
 	sender         *notify.Sender
+	agentRel       agentReleaseState
 }
 
 type job struct {
@@ -102,6 +103,13 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 			job{"feeds", 15 * time.Minute, func(ctx context.Context) error { return s.SyncFeeds(ctx, false) }},
 			job{"nvd", 3 * time.Minute, s.enrichNVD})
 	}
+	if cfg.AgentUpdates.ReleaseURL != "" {
+		every := cfg.AgentUpdates.Interval
+		if every <= 0 {
+			every = 6 * time.Hour
+		}
+		s.jobs = append(s.jobs, job{"agent-releases", every, s.CheckAgentReleases})
+	}
 	s.OnInventory(s.afterInventory)
 	s.jobs = append(s.jobs,
 		job{"presence", 5 * time.Second, s.checkPresence},
@@ -110,6 +118,7 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 		job{"policies", time.Minute, s.RunPolicies},
 		job{"alerts", 15 * time.Second, s.EvaluateAlerts},
 		job{"digest", time.Minute, s.digestJob},
+		job{"agent-auto-update", time.Minute, s.AutoUpdateAgents},
 		job{"retention", time.Hour, func(ctx context.Context) error {
 			r := s.cfg.Retention
 			return s.mets.Prune(ctx, time.Now(), r.Raw, r.Minute, r.Hour)

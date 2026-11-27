@@ -31,6 +31,11 @@ type Executor struct {
 	SendInventory func(ctx context.Context) error
 	// ScheduleReboot is called after the result of a reboot command has been reported.
 	ScheduleReboot func(delay time.Duration)
+	// AllowSelfUpdate permits update_agent; UpdateAgent installs the verified release
+	// and ScheduleRestart re-executes the new binary after the result is reported.
+	AllowSelfUpdate bool
+	UpdateAgent     func(ctx context.Context, p protocol.UpdateAgentParams) (string, error)
+	ScheduleRestart func()
 	// PackageManager overrides detection (tests).
 	PackageManager string
 	Root           string
@@ -89,6 +94,9 @@ func (e *Executor) Execute(ctx context.Context, cmd protocol.Command) protocol.C
 	if err := cmd.Validate(); err != nil {
 		return finish(protocol.StatusRejected, nil, err)
 	}
+	if cmd.Action == protocol.ActionUpdateAgent {
+		return e.updateAgent(ctx, cmd, finish)
+	}
 	mutating := cmd.Action != protocol.ActionRefreshInventory && cmd.Action != protocol.ActionScan
 	if mutating && !cmd.DryRun && !e.AllowPatching {
 		return finish(protocol.StatusRejected, nil, errors.New("patching is disabled on this agent (allow_patching: false)"))
@@ -126,6 +134,28 @@ func (e *Executor) Execute(ctx context.Context, cmd protocol.Command) protocol.C
 	}
 	// patch actions
 	return e.patch(ctx, cmd, res)
+}
+
+func (e *Executor) updateAgent(ctx context.Context, cmd protocol.Command, finish func(string, []byte, error) protocol.CommandResult) protocol.CommandResult {
+	var p protocol.UpdateAgentParams
+	_ = json.Unmarshal(cmd.Params, &p)
+	if !e.AllowSelfUpdate {
+		return finish(protocol.StatusRejected, nil, errors.New("self-update is disabled on this agent (allow_self_update: false)"))
+	}
+	if cmd.DryRun {
+		return finish(protocol.StatusOK, []byte("would update the agent to "+p.Version), nil)
+	}
+	if e.UpdateAgent == nil {
+		return finish(protocol.StatusFailed, nil, errors.New("self-update not available"))
+	}
+	out, err := e.UpdateAgent(ctx, p)
+	if err != nil {
+		return finish(protocol.StatusFailed, []byte(out), err)
+	}
+	if e.ScheduleRestart != nil {
+		e.ScheduleRestart()
+	}
+	return finish(protocol.StatusOK, []byte(out), nil)
 }
 
 // RebootNow reboots the host (called by the agent after reporting the result).

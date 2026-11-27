@@ -7,7 +7,7 @@
     {{if .Data.Host.Group}}<span class="badge">{{.Data.Host.Group}}</span>{{end}}
     {{range .Data.Host.Tags}}<span class="badge badge-muted">{{.}}</span>{{end}}
   </div>
-  <p class="mt-1 text-sm text-zinc-500">{{with .Data.OS}}{{.}} · {{end}}{{t "host.agentLastSeen" .Data.Host.AgentVersion (reltime .Data.Host.LastSeen)}}</p>
+  <p class="mt-1 text-sm text-zinc-500">{{with .Data.OS}}{{.}} · {{end}}{{t "host.agentLastSeen" .Data.Host.AgentVersion (reltime .Data.Host.LastSeen)}}{{with .Data.AgentUpdate}} <span class="badge badge-warn">{{t "agentupd.available" .}}</span>{{end}}</p>
   <nav class="mt-4 flex gap-1 overflow-x-auto border-b border-zinc-200 text-sm dark:border-zinc-800">
     {{$id := .Data.Host.ID}}{{$tab := .Data.Tab}}
     {{range .Data.Tabs}}

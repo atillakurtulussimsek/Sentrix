@@ -69,11 +69,13 @@ func (d *doneLog) put(r protocol.CommandResult) {
 // EnableCommands registers the command long-poll loop.
 func (a *Agent) EnableCommands() {
 	ex := &executor.Executor{
-		Run:           collect.LongRunner,
-		Inventory:     NewInventoryCollector(a.cfg.ProcRoot, a.cfg.DockerSocket, true),
-		Reboot:        &collect.RebootCheck{Root: "/", ProcRoot: a.cfg.ProcRoot, Run: collect.ExecRunner},
-		AllowPatching: a.cfg.AllowPatching,
-		SendInventory: a.SendInventory,
+		Run:             collect.LongRunner,
+		Inventory:       NewInventoryCollector(a.cfg.ProcRoot, a.cfg.DockerSocket, true),
+		Reboot:          &collect.RebootCheck{Root: "/", ProcRoot: a.cfg.ProcRoot, Run: collect.ExecRunner},
+		AllowPatching:   a.cfg.AllowPatching,
+		SendInventory:   a.SendInventory,
+		AllowSelfUpdate: a.cfg.AllowSelfUpdate,
+		UpdateAgent:     a.installUpdate,
 	}
 	a.loops = append(a.loops, func(ctx context.Context) { a.commandLoop(ctx, ex) })
 }
@@ -120,11 +122,16 @@ func (a *Agent) pollOnce(ctx context.Context, ex *executor.Executor, done *doneL
 		}
 		a.log.Info("executing command", "id", cmd.ID, "action", cmd.Action, "dry_run", cmd.DryRun)
 		var rebootDelay *time.Duration
+		restart := false
 		ex.ScheduleReboot = func(d time.Duration) { rebootDelay = &d }
+		ex.ScheduleRestart = func() { restart = true }
 		res = ex.Execute(ctx, cmd)
 		done.put(res)
 		a.log.Info("command finished", "id", cmd.ID, "status", res.Status, "err", res.Error)
 		a.sendResult(ctx, res)
+		if restart {
+			a.restartSelf() // does not return on success
+		}
 		if rebootDelay != nil {
 			a.log.Warn("rebooting host on server request", "delay", *rebootDelay)
 			if err := ex.RebootNow(ctx, *rebootDelay); err != nil {
