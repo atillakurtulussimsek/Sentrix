@@ -46,7 +46,13 @@ func (s *Server) handlePlanNew(w http.ResponseWriter, r *http.Request) {
 	if scope == "" {
 		scope = "security"
 	}
-	s.renderPage(w, r, 200, "patch_new", s.t(r, "plan.new"), map[string]any{"Hosts": sums, "Selected": pre, "Groups": keysOf(groups), "Scope": scope, "Hooks": hooks})
+	var pkgs []string
+	for _, p := range splitList(r.URL.Query().Get("packages")) {
+		if protocol.ValidPackageName(p) {
+			pkgs = append(pkgs, p)
+		}
+	}
+	s.renderPage(w, r, 200, "patch_new", s.t(r, "plan.new"), map[string]any{"Hosts": sums, "Selected": pre, "Groups": keysOf(groups), "Scope": scope, "Hooks": hooks, "Packages": strings.Join(pkgs, " ")})
 }
 
 func (s *Server) handlePlanCreate(w http.ResponseWriter, r *http.Request) {
@@ -180,6 +186,11 @@ func (s *Server) handleHostPatches(w http.ResponseWriter, r *http.Request) {
 	d["Plans"], _ = s.db.HostPlans(r.Context(), h.ID)
 	d["Commands"], _ = s.db.ListHostCommands(r.Context(), h.ID, 50)
 	d["Settings"], _ = s.db.GetHostSettings(r.Context(), h.ID)
+	if cmds, ok := d["Commands"].([]store.CommandRow); ok {
+		d["PkgPreviews"] = packagePreviews(cmds, time.Now(), 3)
+	}
+	d["PkgOp"], d["PkgNames"] = packageFormDefaults(r)
+	d["PkgMax"] = protocol.MaxManagedPackages
 	s.renderPage(w, r, 200, "host_patches", h.Hostname, d)
 }
 

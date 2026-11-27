@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Package management (admin only): install packages from the configured repositories and remove or purge installed ones from host → *Patches & actions*. Every operation is previewed with a dry run and applied after review (removals need an extra acknowledgement); kernels, boot, init, SSH, the package manager and the agent are protected, also as dependencies. Agents opt in with `allow_package_management: true` / `install.sh --allow-package-management` (off by default).
+- "Remove…" links in the host inventory and "Update…" links on pending updates (prefilled patch plan).
+
 ## [0.2.0] - 2026-11-27
 
 Turkish-first release with signed agent self-update.

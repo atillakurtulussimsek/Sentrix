@@ -25,13 +25,23 @@ const (
 	// ActionUpdateAgent replaces the agent binary with a release signed by the
 	// Varkhe Digital release key (verified by the agent, see internal/selfupdate).
 	ActionUpdateAgent Action = "update_agent"
+	// ActionInstallPackages installs packages from the host's configured repositories
+	// (latest available version). Requires allow_package_management on the agent.
+	ActionInstallPackages Action = "install_packages"
+	// ActionRemovePackages removes packages (optionally purging their configuration).
+	// Requires allow_package_management; protected packages are never removed.
+	ActionRemovePackages Action = "remove_packages"
 )
 
 // KnownActions lists every action an agent accepts.
 var KnownActions = []Action{
 	ActionRefreshInventory, ActionScan, ActionPatchPackages, ActionPatchSecurityOnly,
 	ActionPatchAll, ActionReboot, ActionRestartService, ActionUpdateAgent,
+	ActionInstallPackages, ActionRemovePackages,
 }
+
+// MaxManagedPackages bounds install_packages / remove_packages requests.
+const MaxManagedPackages = 50
 
 // Command is an instruction from the server. ID makes delivery idempotent: agents
 // never execute the same ID twice.
@@ -65,6 +75,18 @@ type UpdateAgentParams struct {
 	Version string `json:"version"`
 	Arch    string `json:"arch"`
 	SHA256  string `json:"sha256"`
+}
+
+// InstallPackagesParams names packages to install from the configured repositories.
+type InstallPackagesParams struct {
+	Packages []string `json:"packages"`
+}
+
+// RemovePackagesParams names packages to remove; Purge also deletes their
+// configuration files where the package manager supports it (apt, apk).
+type RemovePackagesParams struct {
+	Packages []string `json:"packages"`
+	Purge    bool     `json:"purge,omitempty"`
 }
 
 // Command result states.
@@ -181,8 +203,40 @@ func (c Command) Validate() error {
 		if !releaseVersionRe.MatchString(p.Version) || (p.Arch != "amd64" && p.Arch != "arm64") || !sha256Re.MatchString(p.SHA256) {
 			return errors.New("update_agent: invalid version, arch or sha256")
 		}
+	case ActionInstallPackages:
+		var p InstallPackagesParams
+		if err := decodeStrict(c.Params, &p); err != nil {
+			return fmt.Errorf("install_packages params: %w", err)
+		}
+		return validManaged(c.Action, p.Packages, false)
+	case ActionRemovePackages:
+		var p RemovePackagesParams
+		if err := decodeStrict(c.Params, &p); err != nil {
+			return fmt.Errorf("remove_packages params: %w", err)
+		}
+		return validManaged(c.Action, p.Packages, true)
 	default:
 		return fmt.Errorf("%w: %q", ErrUnknownAction, c.Action)
+	}
+	return nil
+}
+
+func validManaged(action Action, pkgs []string, removal bool) error {
+	if len(pkgs) == 0 || len(pkgs) > MaxManagedPackages {
+		return fmt.Errorf("%s: need 1..%d packages", action, MaxManagedPackages)
+	}
+	seen := map[string]bool{}
+	for _, n := range pkgs {
+		if !ValidPackageName(n) {
+			return fmt.Errorf("%s: invalid package name %q", action, n)
+		}
+		if seen[n] {
+			return fmt.Errorf("%s: duplicate package %q", action, n)
+		}
+		seen[n] = true
+		if removal && ProtectedPackage(n) {
+			return fmt.Errorf("%s: %q is protected and cannot be removed", action, n)
+		}
 	}
 	return nil
 }

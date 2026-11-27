@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
+	"github.com/atillakurtulussimsek/Sentrix/internal/protocol"
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
 	"github.com/atillakurtulussimsek/Sentrix/internal/version"
 	"github.com/atillakurtulussimsek/Sentrix/internal/vuln"
@@ -93,7 +94,8 @@ func parsePages(cat *i18n.Catalog, lang string) (map[string]*template.Template, 
 			}
 			return m
 		},
-		"list": func(v ...string) []string { return v },
+		"list":         func(v ...string) []string { return v },
+		"protectedPkg": protocol.ProtectedPackage,
 		"ifz": func(n int, zero, nonzero string) string {
 			if n == 0 {
 				return zero

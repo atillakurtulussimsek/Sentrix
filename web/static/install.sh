@@ -9,6 +9,7 @@
 #   --download-url URL      where to fetch sentrix-agent-linux-<arch> (default: this server)
 #   --no-patching           install read-only (allow_patching: false)
 #   --no-self-update        never install agent updates offered by the server (allow_self_update: false)
+#   --allow-package-management  let admins install/remove packages from the UI (allow_package_management: true)
 #   --lang tr|en            installer and agent CLI language (default: tr)
 set -eu
 
@@ -20,6 +21,7 @@ NAME=""
 DOWNLOAD=""
 ALLOW_PATCHING=true
 ALLOW_SELF_UPDATE=true
+ALLOW_PACKAGE_MANAGEMENT=false
 LNG=tr
 BADOPT=""
 RELEASES="https://github.com/atillakurtulussimsek/Sentrix/releases/latest/download"
@@ -36,6 +38,7 @@ while [ $# -gt 0 ]; do
     --download-url) DOWNLOAD="$2"; shift 2 ;;
     --no-patching) ALLOW_PATCHING=false; shift ;;
     --no-self-update) ALLOW_SELF_UPDATE=false; shift ;;
+    --allow-package-management) ALLOW_PACKAGE_MANAGEMENT=true; shift ;;
     --lang) LNG="$2"; shift 2 ;;
     --lang=*) LNG="${1#--lang=}"; shift ;;
     -h|--help) sed -n '2,14p' "$0" 2>/dev/null || true; exit 0 ;;
@@ -111,6 +114,7 @@ interval: 10s
 send_interval: 30s
 allow_patching: $ALLOW_PATCHING
 allow_self_update: $ALLOW_SELF_UPDATE
+allow_package_management: $ALLOW_PACKAGE_MANAGEMENT
 YAML
   chmod 0600 /etc/sentrix/agent.yaml
 fi

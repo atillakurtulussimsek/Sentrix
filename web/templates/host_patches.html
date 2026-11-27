@@ -8,6 +8,34 @@
       {{if .Data.Plans}}<table class="table table-compact"><tbody>{{range .Data.Plans}}<tr><td><a href="/patches/{{.ID}}" class="hover:underline">{{.Name}}</a></td><td>{{template "planstatus" .Status}}</td><td class="text-right text-xs text-zinc-500">{{fmtTime .CreatedAt}}</td></tr>{{end}}</tbody></table>
       {{else}}<div class="empty">{{t "host.noPlans"}}</div>{{end}}
     </section>
+    {{if can .User "admin"}}{{if .Data.PkgPreviews}}
+    <section class="card" id="pkg-previews">
+      <div class="card-header"><h2>{{t "pkg.previews"}}</h2><span class="text-xs text-zinc-500">{{t "pkg.previewsHint"}}</span></div>
+      <div class="divide-y divide-zinc-100 dark:divide-zinc-800">{{range .Data.PkgPreviews}}
+      <div class="space-y-2 px-5 py-4 text-sm">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="badge {{if eq .Op "install"}}badge-online{{else}}badge-offline{{end}}">{{t (printf "pkg.op.%s" .Op)}}</span>
+          <span class="font-mono text-xs">{{join .Packages " "}}</span>
+          <span class="ml-auto text-xs text-zinc-500">{{.Cmd.CreatedBy}} · {{reltime .Cmd.CreatedAt}}</span>
+        </div>
+        {{if eq .Cmd.Status "queued" "sent"}}<p class="text-xs text-zinc-500">{{t "pkg.waiting"}}</p>
+        {{else if ne .Cmd.Status "ok"}}<p class="text-xs text-red-600">{{with .Cmd.Result}}{{or .Error .Output}}{{else}}{{t (printf "host.cmd.%s" .Cmd.Status)}}{{end}}</p>
+        {{else}}
+          {{if .Installs}}<div><p class="label">{{t "pkg.willInstall" (len .Installs)}}</p><ul class="mt-1 space-y-0.5 font-mono text-xs">{{range .Installs}}<li>{{.Name}} {{with .From}}<span class="text-zinc-500">{{.}} →</span> {{end}}{{.To}}</li>{{end}}</ul></div>{{end}}
+          {{if .Removals}}<div><p class="label text-red-700 dark:text-red-400">{{t "pkg.willRemove" (len .Removals)}}</p><ul class="mt-1 space-y-0.5 font-mono text-xs">{{range .Removals}}<li>{{.Name}} <span class="text-zinc-500">{{.From}}</span></li>{{end}}</ul></div>{{end}}
+          {{if not (or .Installs .Removals)}}<p class="text-xs text-zinc-500">{{t "pkg.nothingToDo"}}</p>{{end}}
+          {{if .Applied}}<p class="text-xs text-zinc-500">{{t "pkg.applied"}}</p>
+          {{else if .Expired}}<p class="text-xs text-zinc-500">{{t "pkg.expired"}}</p>
+          {{else if .Applicable}}
+          <form method="post" action="/hosts/{{$.Data.Host.ID}}/packages/{{.Cmd.ID}}/apply" class="flex flex-wrap items-center gap-3"{{if .Removals}} data-confirm="{{t "pkg.applyConfirm"}}"{{end}}>
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            {{if .Removals}}<label class="flex items-center gap-2 text-xs"><input type="checkbox" name="confirm" value="1"> {{t "pkg.removeAck" (len .Removals)}}</label>{{end}}
+            <button class="{{if .Removals}}btn-danger{{else}}btn-primary{{end}}">{{t "pkg.apply"}}</button>
+          </form>{{end}}
+        {{end}}
+      </div>{{end}}</div>
+    </section>
+    {{end}}{{end}}
     <section class="card overflow-x-auto">
       <div class="card-header"><h2>{{t "host.commands"}}</h2></div>
       {{if .Data.Commands}}<table class="table table-compact"><thead><tr><th>{{t "host.col.action"}}</th><th>{{t "common.status"}}</th><th>{{t "host.col.by"}}</th><th>{{t "host.col.queued"}}</th><th>{{t "host.col.result"}}</th></tr></thead><tbody>{{range .Data.Commands}}
@@ -31,6 +59,17 @@
     </section>
     {{end}}
     {{if can .User "admin"}}
+    <form method="post" action="/hosts/{{.Data.Host.ID}}/packages" id="packages" class="card space-y-3 p-5">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <h2 class="text-sm font-semibold">{{t "pkg.title"}}</h2>
+      <p class="text-xs text-zinc-500">{{t "pkg.hint" .Data.PkgMax}}</p>
+      <fieldset class="space-y-1.5 text-sm"><legend class="label mb-1">{{t "pkg.operation"}}</legend>
+        {{range $op := (list "install" "remove" "purge")}}<label class="flex items-center gap-2"><input type="radio" name="op" value="{{$op}}" {{if eq $.Data.PkgOp $op}}checked{{end}}> {{t (printf "pkg.op.%s" $op)}}</label>{{end}}
+      </fieldset>
+      <label class="block"><span class="label">{{t "common.packages"}}</span><input name="packages" required value="{{.Data.PkgNames}}" placeholder="htop jq" class="input mt-1 font-mono"></label>
+      <p class="text-xs text-zinc-500">{{t "pkg.protectedHint"}}</p>
+      <button class="btn-secondary w-full">{{t "pkg.preview"}}</button>
+    </form>
     <form method="post" action="/hosts/{{.Data.Host.ID}}/settings" class="card space-y-3 p-5">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <h2 class="text-sm font-semibold">{{t "host.settings"}}</h2>

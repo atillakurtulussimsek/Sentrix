@@ -14,6 +14,8 @@ The server can only ask an agent to perform one of these actions:
 | `patch_all` | none | `apt-get upgrade --with-new-pkgs` / `dnf -y upgrade` / `apk upgrade` |
 | `reboot` | `{"delay_seconds": 0..3600}` | `systemctl reboot` / `shutdown -r +N` |
 | `restart_service` | `{"name": "unit"}` | `systemctl restart -- <unit>` |
+| `install_packages` | `{"packages": [...]}` (1–50 names) | `apt-get install …` / `dnf -y install -- …` / `apk add …` (latest version in the configured repositories) |
+| `remove_packages` | `{"packages": [...], "purge": bool}` | `apt-get remove …` (`purge` when requested) / `dnf -y remove -- …` / `apk del [--purge] …` |
 
 Guarantees (enforced in `internal/protocol/actions.go` and `internal/agent/executor`, tested by
 `TestValidateRejectsUnknownAndRaw`, `TestNoArbitraryExecution`, `TestOnlyAllowedProgramsAndArgvSeparation`):
@@ -28,6 +30,21 @@ Guarantees (enforced in `internal/protocol/actions.go` and `internal/agent/execu
   changing actions while still answering dry runs.
 - Command IDs make delivery idempotent: an agent never runs the same command twice (results of the last 200
   commands are kept in `state_dir/commands.json`).
+
+## Package management
+
+`install_packages` and `remove_packages` are **off by default**: an agent runs them only with
+`allow_package_management: true` (or `install.sh --allow-package-management`); otherwise it rejects them,
+dry runs included. In the UI only admins can use them (host → *Patches & actions → Package management*):
+
+- Every operation starts as a dry run; the admin sees the simulated transaction and applies it within one hour.
+  Removals need an extra acknowledgement.
+- Before the real run the agent simulates the transaction again and refuses it if it would remove a protected
+  package — directly or as a dependency: kernels and boot loaders, init/systemd, the C library, the package
+  manager, SSH/sudo/PAM, core userland and the Sentrix agent (`internal/protocol/protected.go`).
+- Version pinning is not supported (`name=version` is not a valid package name); the latest repository version is
+  installed. `purge` deletes configuration files with apt and apk; rpm has no purge (modified files are kept as
+  `.rpmsave`).
 
 ## Identity and transport
 

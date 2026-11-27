@@ -76,6 +76,8 @@ func (a *Agent) EnableCommands() {
 		SendInventory:   a.SendInventory,
 		AllowSelfUpdate: a.cfg.AllowSelfUpdate,
 		UpdateAgent:     a.installUpdate,
+
+		AllowPackageManagement: a.cfg.AllowPackageManagement,
 	}
 	a.loops = append(a.loops, func(ctx context.Context) { a.commandLoop(ctx, ex) })
 }

@@ -57,5 +57,5 @@ Last updated: 2026-11-27
 - Turkish localization (default) with per-user language, localized notifications/CLIs/installer and Turkish docs — done, `make build test lint` green, verified in the browser (TR/EN switch, no untranslated UI text on all pages).
 
 ## Next up
-- Owner: publish the v0.2.0 draft release on GitHub (v0.1.0 draft can be deleted or kept); servers then pick up the signed agents.
+- Package management (install/remove/purge, admin only, agent opt-in) is on main, unreleased.
 - Roadmap items listed in the final summary above.

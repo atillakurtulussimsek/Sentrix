@@ -115,6 +115,18 @@ Short ADR entries: date, decision, alternatives, reason.
 - Filtering applies only when an installed kernel package matches the running release; otherwise (containers,
   unknown release) matching stays unfiltered and conservative. APK is not filtered (one kernel per flavour).
 
+## 2026-11-28 — Package install/remove
+
+- New typed actions `install_packages` / `remove_packages` (purge flag) instead of any free-form command; 1–50 names,
+  same name pattern as patching, so version pins and options are impossible (owner chose "latest from repo only").
+- Separate agent opt-in `allow_package_management`, default **false** (also in .deb/.rpm and dev configs): enabling
+  patching must not silently enable arbitrary installs. Disabled agents reject even dry runs so the UI shows why.
+- Admin-only in the UI (owner decision). Flow: dry run → preview (valid 1 h) → apply the identical params; removals
+  need a checkbox. A preview counts as applied once a non-dry command with the same action/params exists after it.
+- Protected package list lives in `internal/protocol` so the server (early, friendly error), the validator and the
+  agent share it; the agent also checks every simulated transaction for protected *dependency* removals before the
+  real run. Purge offered by owner request; on rpm it is a plain remove.
+
 ## 2026-11-27 — Agent self-update trust model
 - Owner's choice: agents trust only binaries signed with an offline release key (Ed25519, public key compiled into
   the agent, private key only as the `SENTRIX_RELEASE_SIGNING_KEY` CI secret). A compromised server can offer but not

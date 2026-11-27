@@ -46,6 +46,8 @@ func (s *Server) adminRoutes(r chi.Router) {
 	r.Post("/settings/policies", s.handlePolicySave)
 	r.Post("/settings/policies/{id}/delete", s.handlePolicyDelete)
 	r.Post("/hosts/{id}/settings", s.handleHostSettings)
+	r.Post("/hosts/{id}/packages", s.handlePackagePreview)
+	r.Post("/hosts/{id}/packages/{cmd}/apply", s.handlePackageApply)
 	r.Post("/alerts/rules", s.handleRuleSave)
 	r.Post("/alerts/rules/{id}/toggle", s.handleRuleToggle)
 	r.Post("/alerts/rules/{id}/delete", s.handleRuleDelete)

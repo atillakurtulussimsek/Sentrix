@@ -58,6 +58,7 @@ sentrix-server serve | token create | ca-fingerprint | hosts | findings | stats 
 | `tls_endpoints` | `SENTRIX_TLS_ENDPOINTS` | – | sertifikası denetlenecek `host:port` adresleri (arayüzde sunucu başına da ayarlanabilir) |
 | `allow_patching` | `SENTRIX_ALLOW_PATCHING` | `true` | `false` = salt okunur ajan (deneme çalıştırmaları yine çalışır) |
 | `allow_self_update` | `SENTRIX_ALLOW_SELF_UPDATE` | `true` (.deb/.rpm'de `false`) | sunucunun önerdiği ajan sürümlerini kurar (yalnızca sürüm anahtarıyla imzalı dosyalar); `install.sh --no-self-update` `false` yapar |
+| `allow_package_management` | `SENTRIX_ALLOW_PACKAGE_MANAGEMENT` | `false` | yöneticilerin arayüzden paket kurup kaldırmasına izin verir (korunan paketler asla kaldırılmaz); `install.sh --allow-package-management` `true` yapar |
 | `proc_root` | `SENTRIX_PROC_ROOT` | `/proc` | sunucunun /proc dizini bağlanmış konteynerler için |
 | `docker_socket` | `SENTRIX_DOCKER_SOCKET` | `/var/run/docker.sock` | varsa konteyner metrikleri |
 | `log_level` | `SENTRIX_LOG_LEVEL` | `info` | |

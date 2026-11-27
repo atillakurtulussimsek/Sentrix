@@ -47,8 +47,8 @@
 <div id="pkg-table" class="max-h-[36rem] overflow-y-auto">
   {{if .Data.Packages}}
   <table class="table table-compact">
-    <thead class="sticky top-0 bg-white dark:bg-zinc-900"><tr><th>{{t "common.name"}}</th><th>{{t "common.version"}}</th><th>{{t "inv.col.arch"}}</th><th>{{t "inv.col.source"}}</th></tr></thead>
-    <tbody>{{range .Data.Packages}}<tr><td class="font-medium">{{.Name}}</td><td class="font-mono text-xs">{{.Version}}</td><td class="text-xs text-zinc-500">{{.Arch}}</td><td class="text-xs text-zinc-500">{{if ne .SourceName .Name}}{{.SourceName}}{{end}}</td></tr>{{end}}</tbody>
+    <thead class="sticky top-0 bg-white dark:bg-zinc-900"><tr><th>{{t "common.name"}}</th><th>{{t "common.version"}}</th><th>{{t "inv.col.arch"}}</th><th>{{t "inv.col.source"}}</th>{{if can .User "admin"}}<th></th>{{end}}</tr></thead>
+    <tbody>{{range .Data.Packages}}<tr><td class="font-medium">{{.Name}}</td><td class="font-mono text-xs">{{.Version}}</td><td class="text-xs text-zinc-500">{{.Arch}}</td><td class="text-xs text-zinc-500">{{if ne .SourceName .Name}}{{.SourceName}}{{end}}</td>{{if can $.User "admin"}}<td class="text-right">{{if not (protectedPkg .Name)}}<a href="/hosts/{{$.Data.Host.ID}}/patches?op=remove&amp;packages={{.Name}}#packages" class="text-xs text-red-700 hover:underline dark:text-red-400">{{t "pkg.removeLink"}}</a>{{end}}</td>{{end}}</tr>{{end}}</tbody>
   </table>
   {{else}}<div class="empty">{{with .Data.Query}}{{t "inv.noPackagesMatch" .}}{{else}}{{t "inv.noPackages"}}{{end}}</div>{{end}}
 </div>

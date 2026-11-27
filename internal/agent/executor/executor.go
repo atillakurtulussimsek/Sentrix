@@ -36,6 +36,9 @@ type Executor struct {
 	AllowSelfUpdate bool
 	UpdateAgent     func(ctx context.Context, p protocol.UpdateAgentParams) (string, error)
 	ScheduleRestart func()
+	// AllowPackageManagement permits install_packages and remove_packages
+	// (off by default; set allow_package_management: true on the agent).
+	AllowPackageManagement bool
 	// PackageManager overrides detection (tests).
 	PackageManager string
 	Root           string
@@ -96,6 +99,12 @@ func (e *Executor) Execute(ctx context.Context, cmd protocol.Command) protocol.C
 	}
 	if cmd.Action == protocol.ActionUpdateAgent {
 		return e.updateAgent(ctx, cmd, finish)
+	}
+	if cmd.Action == protocol.ActionInstallPackages || cmd.Action == protocol.ActionRemovePackages {
+		if !e.AllowPackageManagement {
+			return finish(protocol.StatusRejected, nil, errors.New("package management is disabled on this agent (allow_package_management: false)"))
+		}
+		return e.withPackageManager(ctx, cmd, res, e.managePackages)
 	}
 	mutating := cmd.Action != protocol.ActionRefreshInventory && cmd.Action != protocol.ActionScan
 	if mutating && !cmd.DryRun && !e.AllowPatching {
@@ -176,20 +185,25 @@ func (e *Executor) patch(ctx context.Context, cmd protocol.Command, res protocol
 		_ = json.Unmarshal(cmd.Params, &p)
 		pkgs = p.Packages
 	}
-	pm := e.pkgManager()
-	var out []byte
-	var changes []protocol.PackageChange
-	var err error
-	switch pm {
-	case "dpkg":
-		out, changes, err = e.patchApt(ctx, cmd.Action, pkgs, cmd.DryRun)
-	case "rpm":
-		out, changes, err = e.patchDnf(ctx, cmd.Action, pkgs, cmd.DryRun)
-	case "apk":
-		out, changes, err = e.patchApk(ctx, cmd.Action, pkgs, cmd.DryRun)
-	default:
-		err = errors.New("no supported package manager")
-	}
+	return e.withPackageManager(ctx, cmd, res, func(ctx context.Context, pm string, cmd protocol.Command) ([]byte, []protocol.PackageChange, error) {
+		switch pm {
+		case "dpkg":
+			return e.patchApt(ctx, cmd.Action, pkgs, cmd.DryRun)
+		case "rpm":
+			return e.patchDnf(ctx, cmd.Action, pkgs, cmd.DryRun)
+		case "apk":
+			return e.patchApk(ctx, cmd.Action, pkgs, cmd.DryRun)
+		}
+		return nil, nil, errors.New("no supported package manager")
+	})
+}
+
+type pkgOp func(ctx context.Context, pm string, cmd protocol.Command) ([]byte, []protocol.PackageChange, error)
+
+// withPackageManager runs a package operation and, after a real run, refreshes the
+// inventory and the reboot-required state.
+func (e *Executor) withPackageManager(ctx context.Context, cmd protocol.Command, res protocol.CommandResult, op pkgOp) protocol.CommandResult {
+	out, changes, err := op(ctx, e.pkgManager(), cmd)
 	res.Output, res.Changes, res.FinishedAt = truncate(string(out)), changes, time.Now().UTC()
 	if err != nil {
 		res.Status, res.Error = protocol.StatusFailed, err.Error()
@@ -288,8 +302,9 @@ func (e *Executor) dnfTool() string {
 // dnf transaction lines: " openssl-libs   x86_64   1:3.0.7-27.el9   baseos   2.1 M"
 var dnfTxRe = regexp.MustCompile(`^\s+(\S+)\s+(x86_64|aarch64|noarch|i686|ppc64le|s390x)\s+(\S+)\s+\S+\s+[\d.]+\s+[kMG]$`)
 
-// ParseDnfTransaction extracts package NEVRs from the "Upgrading:"/"Installing:" sections
-// of a dnf transaction summary.
+// ParseDnfTransaction extracts package NEVRs from a dnf transaction summary: the
+// "Upgrading:"/"Installing:" sections give new versions (To), the "Removing…:"
+// sections give removed versions (From, To empty).
 func ParseDnfTransaction(out string) []protocol.PackageChange {
 	var res []protocol.PackageChange
 	section := ""
@@ -297,7 +312,10 @@ func ParseDnfTransaction(out string) []protocol.PackageChange {
 		t := strings.TrimSpace(l)
 		switch {
 		case strings.HasPrefix(t, "Upgrading:"), strings.HasPrefix(t, "Installing:"), strings.HasPrefix(t, "Installing dependencies:"), strings.HasPrefix(t, "Installing weak dependencies:"):
-			section = t
+			section = "to"
+			continue
+		case strings.HasPrefix(t, "Removing:"), strings.HasPrefix(t, "Removing dependent packages:"), strings.HasPrefix(t, "Removing unused dependencies:"):
+			section = "from"
 			continue
 		case strings.HasSuffix(t, ":") && !strings.Contains(t, " "):
 			section = ""
@@ -308,7 +326,11 @@ func ParseDnfTransaction(out string) []protocol.PackageChange {
 			continue
 		}
 		if m := dnfTxRe.FindStringSubmatch(l); m != nil {
-			res = append(res, protocol.PackageChange{Name: m[1], To: m[3]})
+			if section == "from" {
+				res = append(res, protocol.PackageChange{Name: m[1], From: m[3]})
+			} else {
+				res = append(res, protocol.PackageChange{Name: m[1], To: m[3]})
+			}
 		}
 	}
 	return res
@@ -340,12 +362,18 @@ func (e *Executor) patchDnf(ctx context.Context, action protocol.Action, pkgs []
 // "(1/2) Upgrading busybox (1.36.1-r15 -> 1.36.1-r20)"
 var apkUpgradeRe = regexp.MustCompile(`\(\d+/\d+\) (?:Upgrading|Installing|Replacing) (\S+) \((?:(\S+) -> )?(\S+)\)`)
 
-// ParseAPKUpgrade extracts changes from apk upgrade/add output.
+// "(1/1) Purging nano (7.2-r1)"
+var apkRemoveRe = regexp.MustCompile(`\(\d+/\d+\) (?:Purging|Deleting) (\S+) \((\S+)\)`)
+
+// ParseAPKUpgrade extracts changes from apk upgrade/add/del output (removed packages
+// carry only From).
 func ParseAPKUpgrade(out string) []protocol.PackageChange {
 	var res []protocol.PackageChange
 	for _, l := range strings.Split(out, "\n") {
 		if m := apkUpgradeRe.FindStringSubmatch(l); m != nil {
 			res = append(res, protocol.PackageChange{Name: m[1], From: m[2], To: m[3]})
+		} else if m := apkRemoveRe.FindStringSubmatch(l); m != nil {
+			res = append(res, protocol.PackageChange{Name: m[1], From: m[2]})
 		}
 	}
 	return res

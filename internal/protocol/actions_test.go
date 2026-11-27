@@ -42,6 +42,15 @@ func TestValidateParams(t *testing.T) {
 		{"reboot", Command{ID: "x", Action: ActionReboot}, true},
 		{"reboot neg", Command{ID: "x", Action: ActionReboot, Params: json.RawMessage(`{"delay_seconds":-1}`)}, false},
 		{"bad id", Command{ID: "../x", Action: ActionScan}, false},
+		{"install ok", Command{ID: "x", Action: ActionInstallPackages, Params: json.RawMessage(`{"packages":["htop","jq"]}`)}, true},
+		{"install version pin", Command{ID: "x", Action: ActionInstallPackages, Params: json.RawMessage(`{"packages":["htop=3.0"]}`)}, false},
+		{"install option", Command{ID: "x", Action: ActionInstallPackages, Params: json.RawMessage(`{"packages":["--reinstall"]}`)}, false},
+		{"install dup", Command{ID: "x", Action: ActionInstallPackages, Params: json.RawMessage(`{"packages":["jq","jq"]}`)}, false},
+		{"install purge field", Command{ID: "x", Action: ActionInstallPackages, Params: json.RawMessage(`{"packages":["jq"],"purge":true}`)}, false},
+		{"remove ok", Command{ID: "x", Action: ActionRemovePackages, Params: json.RawMessage(`{"packages":["nano"],"purge":true}`)}, true},
+		{"remove protected", Command{ID: "x", Action: ActionRemovePackages, Params: json.RawMessage(`{"packages":["openssh-server"]}`)}, false},
+		{"remove kernel", Command{ID: "x", Action: ActionRemovePackages, Params: json.RawMessage(`{"packages":["linux-image-6.8.0-142-generic"]}`)}, false},
+		{"remove agent", Command{ID: "x", Action: ActionRemovePackages, Params: json.RawMessage(`{"packages":["sentrix-agent"]}`)}, false},
 	}
 	for _, tc := range cases {
 		err := tc.cmd.Validate()

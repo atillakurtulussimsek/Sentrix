@@ -25,7 +25,7 @@
       <label class="flex items-center gap-2"><input type="radio" name="scope" value="packages" {{if eq .Data.Scope "packages"}}checked{{end}}> {{t "plan.scopeOption.packages"}}</label>
       <label class="flex items-center gap-2"><input type="radio" name="scope" value="all" {{if eq .Data.Scope "all"}}checked{{end}}> {{t "plan.scopeOption.all"}}</label>
     </fieldset>
-    <label class="block"><span class="label">{{t "plan.form.packages"}}</span><input name="packages" class="input mt-1 font-mono" placeholder="openssl libssl3"></label>
+    <label class="block"><span class="label">{{t "plan.form.packages"}}</span><input name="packages" value="{{.Data.Packages}}" class="input mt-1 font-mono" placeholder="openssl libssl3"></label>
     <label class="block"><span class="label">{{t "plan.form.reboot"}}</span><select name="reboot" class="input mt-1"><option value="never">{{t "plan.rebootOption.never"}}</option><option value="if_required">{{t "plan.rebootOption.if_required"}}</option><option value="always">{{t "plan.rebootOption.always"}}</option></select></label>
     <div class="grid grid-cols-2 gap-3">
       <label class="block"><span class="label">{{t "plan.form.canary"}}</span><input name="canary" type="number" min="0" value="1" class="input mt-1"></label>

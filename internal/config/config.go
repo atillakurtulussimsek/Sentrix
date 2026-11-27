@@ -128,8 +128,11 @@ type Agent struct {
 	AllowPatching bool `yaml:"allow_patching" env:"SENTRIX_ALLOW_PATCHING"`
 	// AllowSelfUpdate lets the server ask the agent to install a newer agent release.
 	// Only binaries signed with the Varkhe Digital release key are accepted.
-	AllowSelfUpdate bool   `yaml:"allow_self_update" env:"SENTRIX_ALLOW_SELF_UPDATE"`
-	LogLevel        string `yaml:"log_level" env:"SENTRIX_LOG_LEVEL"`
+	AllowSelfUpdate bool `yaml:"allow_self_update" env:"SENTRIX_ALLOW_SELF_UPDATE"`
+	// AllowPackageManagement lets admins install and remove packages on this host.
+	// Off by default; protected packages (kernel, init, ssh, the agent …) are never removed.
+	AllowPackageManagement bool   `yaml:"allow_package_management" env:"SENTRIX_ALLOW_PACKAGE_MANAGEMENT"`
+	LogLevel               string `yaml:"log_level" env:"SENTRIX_LOG_LEVEL"`
 }
 
 // DefaultAgent returns agent defaults.

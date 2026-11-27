@@ -8,11 +8,12 @@
 <div class="card overflow-x-auto">
   {{if .Data.Updates}}
   <table class="table table-compact">
-    <thead><tr><th>{{t "common.package"}}</th><th>{{t "host.col.installed"}}</th><th>{{t "host.col.available"}}</th><th>{{t "common.type"}}</th><th>{{t "host.col.origin"}}</th></tr></thead>
+    <thead><tr><th>{{t "common.package"}}</th><th>{{t "host.col.installed"}}</th><th>{{t "host.col.available"}}</th><th>{{t "common.type"}}</th><th>{{t "host.col.origin"}}</th>{{if can $.User "operator"}}<th></th>{{end}}</tr></thead>
     <tbody>{{range .Data.Updates}}
     <tr><td class="font-medium">{{.Name}}</td><td class="font-mono text-xs">{{or .CurrentVer (t "host.newPkg")}}</td><td class="font-mono text-xs">{{.NewVer}}</td>
       <td>{{if .Security}}<span class="badge badge-offline">{{t "host.kind.security"}}</span>{{else}}<span class="badge badge-muted">{{t "host.kind.regular"}}</span>{{end}}</td>
-      <td class="max-w-xs truncate text-xs text-zinc-500" title="{{.Origin}}">{{.Origin}}</td></tr>
+      <td class="max-w-xs truncate text-xs text-zinc-500" title="{{.Origin}}">{{.Origin}}</td>
+      {{if can $.User "operator"}}<td class="text-right"><a href="/patches/new?hosts={{$.Data.Host.ID}}&amp;scope=packages&amp;packages={{.Name}}" class="text-xs text-teal-700 hover:underline dark:text-teal-300">{{t "pkg.updateLink"}}</a></td>{{end}}</tr>
     {{end}}</tbody>
   </table>
   {{else}}<div class="empty">{{t "host.upToDate"}}</div>{{end}}

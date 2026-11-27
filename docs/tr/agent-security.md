@@ -14,6 +14,8 @@ Sunucu bir ajandan yalnızca şu eylemlerden birini yapmasını isteyebilir:
 | `patch_all` | yok | `apt-get upgrade --with-new-pkgs` / `dnf -y upgrade` / `apk upgrade` |
 | `reboot` | `{"delay_seconds": 0..3600}` | `systemctl reboot` / `shutdown -r +N` |
 | `restart_service` | `{"name": "unit"}` | `systemctl restart -- <unit>` |
+| `install_packages` | `{"packages": [...]}` (1–50 ad) | `apt-get install …` / `dnf -y install -- …` / `apk add …` (yapılandırılmış depolardaki son sürüm) |
+| `remove_packages` | `{"packages": [...], "purge": bool}` | `apt-get remove …` (istenirse `purge`) / `dnf -y remove -- …` / `apk del [--purge] …` |
 
 Güvenceler (`internal/protocol/actions.go` ve `internal/agent/executor` içinde uygulanır;
 `TestValidateRejectsUnknownAndRaw`, `TestNoArbitraryExecution`, `TestOnlyAllowedProgramsAndArgvSeparation`
@@ -29,6 +31,20 @@ testleriyle doğrulanır):
   tüm eylemleri reddetmesini sağlar ancak deneme çalıştırmalarına yanıt vermeyi sürdürür.
 - Komut kimlikleri iletimi idempotent kılar: bir ajan aynı komutu asla iki kez çalıştırmaz (son 200 komutun
   sonuçları `state_dir/commands.json` içinde tutulur).
+
+## Paket yönetimi
+
+`install_packages` ve `remove_packages` **varsayılan olarak kapalıdır**: ajan bunları yalnızca
+`allow_package_management: true` (veya `install.sh --allow-package-management`) ile çalıştırır; aksi hâlde deneme
+çalıştırmaları dahil reddeder. Arayüzde yalnızca yöneticiler kullanabilir (sunucu → *Yamalar ve eylemler → Paket yönetimi*):
+
+- Her işlem deneme çalıştırmasıyla başlar; yönetici benzetilmiş işlemi görür ve bir saat içinde uygular.
+  Kaldırma işlemleri ek bir onay ister.
+- Gerçek çalıştırmadan önce ajan işlemi yeniden benzetir ve korunan bir paketi — doğrudan ya da bağımlılık olarak —
+  kaldıracaksa reddeder: çekirdekler ve önyükleyiciler, init/systemd, C kütüphanesi, paket yöneticisi,
+  SSH/sudo/PAM, temel kullanıcı araçları ve Sentrix ajanı (`internal/protocol/protected.go`).
+- Sürüm sabitleme desteklenmez (`ad=sürüm` geçerli bir paket adı değildir); depodaki son sürüm kurulur. `purge`,
+  apt ve apk'da yapılandırma dosyalarını da siler; rpm'de purge yoktur (değiştirilmiş dosyalar `.rpmsave` olarak kalır).
 
 ## Kimlik ve iletim
 

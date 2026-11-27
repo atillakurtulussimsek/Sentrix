@@ -58,6 +58,7 @@ sentrix-server serve | token create | ca-fingerprint | hosts | findings | stats 
 | `tls_endpoints` | `SENTRIX_TLS_ENDPOINTS` | – | `host:port` certificates to check (also per host in the UI) |
 | `allow_patching` | `SENTRIX_ALLOW_PATCHING` | `true` | `false` = read-only agent (dry runs still work) |
 | `allow_self_update` | `SENTRIX_ALLOW_SELF_UPDATE` | `true` (`false` in .deb/.rpm) | install agent releases offered by the server (only release-key signed binaries); `install.sh --no-self-update` sets `false` |
+| `allow_package_management` | `SENTRIX_ALLOW_PACKAGE_MANAGEMENT` | `false` | let admins install/remove packages from the UI (protected packages are never removed); `install.sh --allow-package-management` sets `true` |
 | `proc_root` | `SENTRIX_PROC_ROOT` | `/proc` | for containers with the host's /proc mounted |
 | `docker_socket` | `SENTRIX_DOCKER_SOCKET` | `/var/run/docker.sock` | container metrics if present |
 | `log_level` | `SENTRIX_LOG_LEVEL` | `info` | |
