@@ -26,5 +26,19 @@
   "error.forbidden": "You do not have permission to view this page.",
   "error.notfound": "Page not found.",
   "error.internal": "Something went wrong. The error has been logged.",
-  "feeds.stale": "Vulnerability feeds have not synced recently; results are based on the last successful sync."
+  "feeds.stale": "Vulnerability feeds have not synced recently; results are based on the last successful sync.",
+  "time.never": "never",
+  "time.ago": "%s ago",
+  "time.in": "in %s",
+  "time.seconds": "%ds",
+  "time.minutes": "%dm",
+  "time.hours": "%dh",
+  "time.days": "%dd",
+  "ui.clickToCopy": "Click to copy",
+  "ui.toggleTheme": "Toggle theme",
+  "ui.menu": "Menu",
+  "ui.language": "Language",
+  "ui.apply": "Apply",
+  "lang.unsupported": "Unsupported language.",
+  "error.title": "Error"
 }

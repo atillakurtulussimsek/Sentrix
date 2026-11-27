@@ -148,7 +148,7 @@ func (s *Server) requireRole(role string) func(http.Handler) http.Handler {
 				return
 			}
 			if store.RoleRank(a.Role) < store.RoleRank(role) {
-				s.httpError(w, r, http.StatusForbidden, s.t("error.forbidden"))
+				s.httpError(w, r, http.StatusForbidden, s.t(r, "error.forbidden"))
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -159,7 +159,7 @@ func (s *Server) requireRole(role string) func(http.Handler) http.Handler {
 // requireSetupDone redirects everything to /setup until the first admin exists.
 func (s *Server) requireSetupDone(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !s.setupDone.Load() && !strings.HasPrefix(r.URL.Path, "/static/") && r.URL.Path != "/setup" && r.URL.Path != "/healthz" {
+		if !s.setupDone.Load() && !strings.HasPrefix(r.URL.Path, "/static/") && r.URL.Path != "/setup" && r.URL.Path != "/lang" && r.URL.Path != "/healthz" {
 			n, err := s.db.CountUsers(r.Context())
 			if err == nil && n > 0 {
 				s.setupDone.Store(true)
@@ -181,5 +181,5 @@ func (s *Server) httpError(w http.ResponseWriter, r *http.Request, code int, msg
 		writeJSON(w, code, map[string]string{"error": msg})
 		return
 	}
-	s.renderPage(w, r, code, "error", "Error", map[string]any{"Code": code, "Message": msg})
+	s.renderPage(w, r, code, "error", s.t(r, "error.title"), map[string]any{"Code": code, "Message": msg})
 }

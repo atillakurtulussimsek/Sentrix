@@ -1,16 +1,20 @@
 // Sentrix UI helpers: theme toggle, copy buttons, relative times.
 (function () {
+  // Localized strings come from data-t-* attributes on <body> (see layout.html).
+  function tr(name, fallback) { var v = document.body && document.body.dataset[name]; return v || fallback; }
+  function fmt(f, v) { return f.replace(/%[sd]/, v); }
   function relTime(sec) {
     var d = Math.round(Date.now() / 1000 - sec);
     var future = d < 0; d = Math.abs(d);
-    var s = d < 60 ? d + "s" : d < 3600 ? Math.floor(d / 60) + "m" : d < 86400 ? Math.floor(d / 3600) + "h" : Math.floor(d / 86400) + "d";
-    return future ? "in " + s : s + " ago";
+    var u = tr("tUnits", "%ds|%dm|%dh|%dd").split("|");
+    var s = d < 60 ? fmt(u[0], d) : d < 3600 ? fmt(u[1], Math.floor(d / 60)) : d < 86400 ? fmt(u[2], Math.floor(d / 3600)) : fmt(u[3], Math.floor(d / 86400));
+    return fmt(future ? tr("tIn", "in %s") : tr("tAgo", "%s ago"), s);
   }
   function init(root) {
     root.querySelectorAll("[data-reltime]").forEach(function (el) { el.textContent = relTime(+el.dataset.reltime); });
     root.querySelectorAll("pre[data-copy]").forEach(function (el) {
       if (el.dataset.bound) return; el.dataset.bound = "1";
-      el.title = "Click to copy"; el.style.cursor = "copy";
+      el.title = tr("tCopy", "Click to copy"); el.style.cursor = "copy";
       el.addEventListener("click", function () {
         navigator.clipboard.writeText(el.textContent.trim());
         el.classList.add("ring-2", "ring-teal-500"); setTimeout(function () { el.classList.remove("ring-2", "ring-teal-500"); }, 600);

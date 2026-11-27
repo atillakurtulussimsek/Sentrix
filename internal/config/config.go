@@ -38,7 +38,7 @@ type Server struct {
 	// Directory with agent binaries (sentrix-agent-linux-amd64, -arm64) served at
 	// /download/ for the install.sh one-liner. Empty disables downloads.
 	AgentDir string `yaml:"agent_dir" env:"SENTRIX_AGENT_DIR"`
-	// UI language (message catalog in web/i18n): "en" (default) or "tr".
+	// Default UI/notification/CLI language: "tr" (default) or "en". Users can override it per account.
 	Language string `yaml:"language" env:"SENTRIX_LANGUAGE"`
 	// Insecure cookies for plain-HTTP local development only.
 	DevInsecureCookies bool `yaml:"dev_insecure_cookies" env:"SENTRIX_DEV_INSECURE_COOKIES"`
@@ -89,7 +89,7 @@ func DefaultServer() Server {
 			OfflineAfter: 72 * time.Hour,
 		},
 		LogLevel: "info",
-		Language: "en",
+		Language: "tr",
 	}
 }
 

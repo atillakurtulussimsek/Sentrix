@@ -39,6 +39,7 @@ type User struct {
 	Disabled     bool
 	CreatedAt    time.Time
 	LastLogin    time.Time
+	Language     string // preferred UI language; empty = server default
 }
 
 // Session is a browser login session.
@@ -63,13 +64,13 @@ type APIToken struct {
 	LastUsed  time.Time
 }
 
-const userCols = `id, username, password_hash, role, totp_secret, disabled, created_at, last_login`
+const userCols = `id, username, password_hash, role, totp_secret, disabled, created_at, last_login, language`
 
 func scanUser(sc interface{ Scan(...any) error }) (User, error) {
 	var u User
 	var dis int
 	var c, l int64
-	err := sc.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &dis, &c, &l)
+	err := sc.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.TOTPSecret, &dis, &c, &l, &u.Language)
 	if errors.Is(err, sql.ErrNoRows) {
 		return u, ErrNotFound
 	}
@@ -131,6 +132,12 @@ func (d *DB) UpdateUser(ctx context.Context, u User) error {
 	}
 	_, err := d.sql.ExecContext(ctx, `UPDATE users SET role = ?, disabled = ?, password_hash = ?, totp_secret = ? WHERE id = ?`,
 		u.Role, dis, u.PasswordHash, u.TOTPSecret, u.ID)
+	return err
+}
+
+// SetUserLanguage stores a user's preferred UI language ("" = server default).
+func (d *DB) SetUserLanguage(ctx context.Context, id, lang string) error {
+	_, err := d.sql.ExecContext(ctx, `UPDATE users SET language = ? WHERE id = ?`, lang, id)
 	return err
 }
 

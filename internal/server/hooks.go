@@ -167,7 +167,7 @@ func (s *Server) handleHookTest(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	hk, err := s.db.GetHook(r.Context(), id)
 	if errors.Is(err, store.ErrNotFound) {
-		s.httpError(w, r, 404, s.t("error.notfound"))
+		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)

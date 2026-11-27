@@ -92,7 +92,7 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	s.renderPage(w, r, 200, "login", s.t("login.title"), map[string]any{"Next": safeNext(r.URL.Query().Get("next"))})
+	s.renderPage(w, r, 200, "login", s.t(r, "login.title"), map[string]any{"Next": safeNext(r.URL.Query().Get("next"))})
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -102,11 +102,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	next := safeNext(r.PostFormValue("next"))
 	ip := clientIP(r)
 	fail := func(status int, msg string) {
-		s.renderPage(w, r, status, "login", s.t("login.title"), map[string]any{"Error": msg, "Username": user, "Next": next})
+		s.renderPage(w, r, status, "login", s.t(r, "login.title"), map[string]any{"Error": msg, "Username": user, "Next": next})
 	}
 	if !s.loginIP.Allowed(ip) || !s.loginUser.Allowed(strings.ToLower(user)) {
 		s.log.Warn("login rate limited", "ip", ip, "user", user)
-		fail(http.StatusTooManyRequests, s.t("login.limited"))
+		fail(http.StatusTooManyRequests, s.t(r, "login.limited"))
 		return
 	}
 	u, err := s.db.GetUserByName(ctx, user)
@@ -117,7 +117,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		s.loginIP.Fail(ip)
 		s.loginUser.Fail(strings.ToLower(user))
 		s.audit(ctx, "anonymous", "login.failed", user, "ip="+ip)
-		fail(http.StatusUnauthorized, s.t("login.failed"))
+		fail(http.StatusUnauthorized, s.t(r, "login.failed"))
 		return
 	}
 	s.loginIP.Reset(ip)
@@ -128,7 +128,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	mfa := u.TOTPSecret != ""
 	if err := s.startSession(ctx, w, r, u, mfa); err != nil {
-		fail(500, s.t("error.internal"))
+		fail(500, s.t(r, "error.internal"))
 		return
 	}
 	if mfa {
@@ -151,7 +151,7 @@ func (s *Server) handleMFAForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	s.renderPage(w, r, 200, "login", s.t("mfa.title"), map[string]any{"MFA": true})
+	s.renderPage(w, r, 200, "login", s.t(r, "mfa.title"), map[string]any{"MFA": true})
 }
 
 func (s *Server) handleMFA(w http.ResponseWriter, r *http.Request) {
@@ -163,14 +163,14 @@ func (s *Server) handleMFA(w http.ResponseWriter, r *http.Request) {
 	}
 	key := "mfa:" + a.User.ID
 	if !s.loginUser.Allowed(key) {
-		s.renderPage(w, r, http.StatusTooManyRequests, "login", s.t("mfa.title"), map[string]any{"MFA": true, "Error": s.t("login.limited")})
+		s.renderPage(w, r, http.StatusTooManyRequests, "login", s.t(r, "mfa.title"), map[string]any{"MFA": true, "Error": s.t(r, "login.limited")})
 		return
 	}
 	secret, err := s.box.Open(a.User.TOTPSecret)
 	if err != nil || !auth.VerifyTOTP(secret, r.PostFormValue("code"), time.Now()) {
 		s.loginUser.Fail(key)
 		s.audit(ctx, "user:"+a.User.Username, "login.mfa_failed", a.User.ID, "ip="+clientIP(r))
-		s.renderPage(w, r, http.StatusUnauthorized, "login", s.t("mfa.title"), map[string]any{"MFA": true, "Error": s.t("mfa.failed")})
+		s.renderPage(w, r, http.StatusUnauthorized, "login", s.t(r, "mfa.title"), map[string]any{"MFA": true, "Error": s.t(r, "mfa.failed")})
 		return
 	}
 	s.loginUser.Reset(key)

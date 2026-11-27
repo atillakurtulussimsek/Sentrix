@@ -187,7 +187,7 @@ func (s *Server) handleTokenCreate(w http.ResponseWriter, r *http.Request) {
 	tok := GenerateToken("sxa_")
 	t, err := s.db.CreateAPIToken(r.Context(), store.HashToken(tok), a.User.ID, name, scope, ttl)
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	s.auditReq(r, "api_token.create", t.ID, fmt.Sprintf("name=%s scope=%s ttl=%s", name, scope, ttl))

@@ -39,7 +39,7 @@ func settingsData(section string, extra map[string]any) map[string]any {
 func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := s.db.ListUsers(r.Context())
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	s.renderPage(w, r, 200, "settings_users", "Users", settingsData("users", map[string]any{"Users": users}))
@@ -97,7 +97,7 @@ func (s *Server) lastAdminGuard(r *http.Request, target store.User) bool {
 func (s *Server) userAction(w http.ResponseWriter, r *http.Request, fn func(u *store.User) (string, error)) {
 	u, err := s.db.GetUser(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
-		s.httpError(w, r, 404, s.t("error.notfound"))
+		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return
 	}
 	msg, err := fn(&u)
@@ -170,7 +170,7 @@ type tokenView struct {
 func (s *Server) enrollmentPage(w http.ResponseWriter, r *http.Request, status int, newTok map[string]string) {
 	toks, err := s.db.ListEnrollTokens(r.Context())
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	views := make([]tokenView, 0, len(toks))
@@ -197,7 +197,7 @@ func (s *Server) handleEnrollmentCreate(w http.ResponseWriter, r *http.Request) 
 	group := truncate(strings.TrimSpace(r.PostFormValue("group")), 64)
 	tok, t, err := s.CreateEnrollToken(r.Context(), note, group, ttl)
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	s.auditReq(r, "enroll_token.create", t.ID, "note="+note+" group="+group)
@@ -212,7 +212,7 @@ func (s *Server) handleEnrollmentCreate(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleEnrollmentDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.db.DeleteEnrollToken(r.Context(), id); err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	s.auditReq(r, "enroll_token.delete", id, "")

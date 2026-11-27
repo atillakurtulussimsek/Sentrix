@@ -33,7 +33,7 @@ func (s *Server) handleVulns(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.db.FleetVulns(r.Context(), f)
 	if err != nil {
 		s.log.Error("fleet vulns", "err", err)
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	counts, _ := s.db.SeverityCounts(r.Context())
@@ -42,7 +42,7 @@ func (s *Server) handleVulns(w http.ResponseWriter, r *http.Request) {
 		s.renderTmpl(w, r, 200, "vulns", "vulntable", "", d)
 		return
 	}
-	s.renderPage(w, r, 200, "vulns", s.t("nav.vulns"), d)
+	s.renderPage(w, r, 200, "vulns", s.t(r, "nav.vulns"), d)
 }
 
 type findingView struct {
@@ -89,7 +89,7 @@ func (s *Server) handleVuln(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	fs, _ := s.db.ListFindings(r.Context(), store.FindingFilter{VulnID: id})
@@ -135,7 +135,7 @@ func (s *Server) handlePackage(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	hosts, err := s.db.HostsWithPackage(r.Context(), name)
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	fs, _ := s.db.ListFindings(r.Context(), store.FindingFilter{Package: name})
@@ -167,7 +167,7 @@ func (s *Server) handleExceptionCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	e, err := s.db.CreateException(r.Context(), e)
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	scope := "all hosts"
@@ -182,7 +182,7 @@ func (s *Server) handleExceptionCreate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleExceptionDelete(w http.ResponseWriter, r *http.Request) {
 	e, err := s.db.DeleteException(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
-		s.httpError(w, r, 404, s.t("error.notfound"))
+		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return
 	}
 	s.auditReq(r, "vuln.exception.delete", e.VulnID, "exception "+e.ID)

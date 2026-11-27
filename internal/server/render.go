@@ -28,6 +28,7 @@ type flash struct{ Kind, Message string }
 type page struct {
 	Title        string
 	Lang         string
+	Languages    []i18n.Option
 	CSRF         string
 	AssetVersion string
 	User         *store.User
@@ -38,12 +39,27 @@ type page struct {
 }
 
 type renderer struct {
-	pages map[string]*template.Template
+	pages map[string]map[string]*template.Template // lang → name → template
 }
 
-func newRenderer(cat *i18n.Catalog, lang string) (*renderer, error) {
+// newRenderer parses every page once per language so `t`, `reltime` and
+// `duration` resolve in that language without per-request cloning.
+func newRenderer(cat *i18n.Catalog) (*renderer, error) {
+	r := &renderer{pages: map[string]map[string]*template.Template{}}
+	for _, lang := range cat.Languages() {
+		pages, err := parsePages(cat, lang)
+		if err != nil {
+			return nil, err
+		}
+		r.pages[lang] = pages
+	}
+	return r, nil
+}
+
+func parsePages(cat *i18n.Catalog, lang string) (map[string]*template.Template, error) {
 	funcs := template.FuncMap{
-		"t": func(key string) string { return cat.T(lang, key) },
+		"t":    func(key string, args ...any) string { return cat.T(lang, key, args...) },
+		"lang": func() string { return lang },
 		"dict": func(kv ...any) map[string]any {
 			m := map[string]any{}
 			for i := 0; i+1 < len(kv); i += 2 {
@@ -58,10 +74,10 @@ func newRenderer(cat *i18n.Catalog, lang string) (*renderer, error) {
 			}
 			return nonzero
 		},
-		"reltime":  relTime,
+		"reltime":  func(t time.Time) string { return relTime(cat, lang, t) },
 		"pct":      func(f float64) string { return pctStr(f) },
 		"bytes":    humanBytes,
-		"duration": func(sec int64) string { return humanDuration(time.Duration(sec) * time.Second) },
+		"duration": func(sec int64) string { return humanDuration(cat, lang, time.Duration(sec)*time.Second) },
 		"join":     strings.Join,
 		"can": func(u *store.User, role string) bool {
 			return u != nil && store.RoleRank(u.Role) >= store.RoleRank(role)
@@ -83,7 +99,7 @@ func newRenderer(cat *i18n.Catalog, lang string) (*renderer, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := &renderer{pages: map[string]*template.Template{}}
+	pages := map[string]*template.Template{}
 	for _, e := range entries {
 		name := strings.TrimSuffix(strings.TrimPrefix(e, "templates/"), ".html")
 		if name == "layout" || name == "host_head" || name == "settings_nav" {
@@ -93,13 +109,13 @@ func newRenderer(cat *i18n.Catalog, lang string) (*renderer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parse template %s: %w", name, err)
 		}
-		r.pages[name] = t
+		pages[name] = t
 	}
-	return r, nil
+	return pages, nil
 }
 
 func (r *renderer) render(w http.ResponseWriter, status int, name, tmpl string, p page) error {
-	t, ok := r.pages[name]
+	t, ok := r.pages[p.Lang][name]
 	if !ok {
 		return fmt.Errorf("unknown template %q", name)
 	}
@@ -120,9 +136,9 @@ var assetVersion = func() string {
 	return fmt.Sprint(time.Now().Unix())
 }()
 
-func relTime(t time.Time) string {
+func relTime(cat *i18n.Catalog, lang string, t time.Time) string {
 	if t.IsZero() {
-		return "never"
+		return cat.T(lang, "time.never")
 	}
 	d := time.Since(t)
 	future := d < 0
@@ -132,18 +148,18 @@ func relTime(t time.Time) string {
 	var s string
 	switch {
 	case d < time.Minute:
-		s = fmt.Sprintf("%ds", int(d.Seconds()))
+		s = cat.T(lang, "time.seconds", int(d.Seconds()))
 	case d < time.Hour:
-		s = fmt.Sprintf("%dm", int(d.Minutes()))
+		s = cat.T(lang, "time.minutes", int(d.Minutes()))
 	case d < 48*time.Hour:
-		s = fmt.Sprintf("%dh", int(d.Hours()))
+		s = cat.T(lang, "time.hours", int(d.Hours()))
 	default:
-		s = fmt.Sprintf("%dd", int(d.Hours()/24))
+		s = cat.T(lang, "time.days", int(d.Hours()/24))
 	}
 	if future {
-		return "in " + s
+		return cat.T(lang, "time.in", s)
 	}
-	return s + " ago"
+	return cat.T(lang, "time.ago", s)
 }
 
 func pctStr(f float64) string {
@@ -166,7 +182,7 @@ func humanBytes(b uint64) string {
 	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
-func humanDuration(d time.Duration) string {
+func humanDuration(cat *i18n.Catalog, lang string, d time.Duration) string {
 	if d <= 0 {
 		return "–"
 	}
@@ -175,11 +191,11 @@ func humanDuration(d time.Duration) string {
 	m := int(d.Minutes()) % 60
 	switch {
 	case days > 0:
-		return fmt.Sprintf("%dd %dh", days, h)
+		return cat.T(lang, "time.days", days) + " " + cat.T(lang, "time.hours", h)
 	case h > 0:
-		return fmt.Sprintf("%dh %dm", h, m)
+		return cat.T(lang, "time.hours", h) + " " + cat.T(lang, "time.minutes", m)
 	}
-	return fmt.Sprintf("%dm", m)
+	return cat.T(lang, "time.minutes", m)
 }
 
 func riskClass(r float64) string {

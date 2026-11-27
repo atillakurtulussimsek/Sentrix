@@ -29,7 +29,8 @@ func (s *Server) UIHandler() http.Handler {
 	r.Handle("/static/*", http.StripPrefix("/static/", cacheStatic(http.FileServer(http.FS(static)))))
 
 	r.Group(func(r chi.Router) {
-		r.Use(s.requireSetupDone, s.identify, s.csrf)
+		r.Use(s.requireSetupDone, s.identify, s.withLang, s.csrf)
+		r.Post("/lang", s.handleSetLanguage)
 		r.Get("/setup", s.handleSetupForm)
 		r.Post("/setup", s.handleSetup)
 		r.Get("/login", s.handleLoginForm)
@@ -78,7 +79,7 @@ func (s *Server) UIHandler() http.Handler {
 			s.adminRoutes(r)
 		})
 		r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-			s.httpError(w, r, http.StatusNotFound, s.t("error.notfound"))
+			s.httpError(w, r, http.StatusNotFound, s.t(r, "error.notfound"))
 		})
 	})
 	return r
@@ -91,7 +92,6 @@ func cacheStatic(h http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) t(key string) string { return s.cat.T(s.cfg.Language, key) }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if err := s.db.SQL().PingContext(r.Context()); err != nil {
@@ -120,18 +120,18 @@ func (s *Server) nav(r *http.Request, a *authInfo) []navItem {
 		return strings.HasPrefix(p, prefix)
 	}
 	items := []navItem{
-		{Href: "/", Label: s.t("nav.dashboard"), Icon: iconDashboard, Active: active("/")},
-		{Href: "/hosts", Label: s.t("nav.hosts"), Icon: iconHosts, Active: active("/hosts")},
-		{Href: "/vulns", Label: s.t("nav.vulns"), Icon: iconVuln, Active: active("/vulns")},
-		{Href: "/patches", Label: s.t("nav.patches"), Icon: iconPatch, Active: active("/patches")},
-		{Href: "/alerts", Label: s.t("nav.alerts"), Icon: iconAlert, Active: active("/alerts"), Badge: s.firingAlerts(r)},
+		{Href: "/", Label: s.t(r, "nav.dashboard"), Icon: iconDashboard, Active: active("/")},
+		{Href: "/hosts", Label: s.t(r, "nav.hosts"), Icon: iconHosts, Active: active("/hosts")},
+		{Href: "/vulns", Label: s.t(r, "nav.vulns"), Icon: iconVuln, Active: active("/vulns")},
+		{Href: "/patches", Label: s.t(r, "nav.patches"), Icon: iconPatch, Active: active("/patches")},
+		{Href: "/alerts", Label: s.t(r, "nav.alerts"), Icon: iconAlert, Active: active("/alerts"), Badge: s.firingAlerts(r)},
 	}
 	if a != nil && store.RoleRank(a.Role) >= store.RoleRank(store.RoleAdmin) {
 		items = append(items,
-			navItem{Href: "/audit", Label: s.t("nav.audit"), Icon: iconAudit, Active: active("/audit")},
-			navItem{Href: "/settings", Label: s.t("nav.settings"), Icon: iconSettings, Active: active("/settings")})
+			navItem{Href: "/audit", Label: s.t(r, "nav.audit"), Icon: iconAudit, Active: active("/audit")},
+			navItem{Href: "/settings", Label: s.t(r, "nav.settings"), Icon: iconSettings, Active: active("/settings")})
 	} else if a != nil {
-		items = append(items, navItem{Href: "/settings/account", Label: s.t("nav.settings"), Icon: iconSettings, Active: active("/settings")})
+		items = append(items, navItem{Href: "/settings/account", Label: s.t(r, "nav.settings"), Icon: iconSettings, Active: active("/settings")})
 	}
 	return items
 }
@@ -142,7 +142,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 }
 
 func (s *Server) renderTmpl(w http.ResponseWriter, r *http.Request, status int, name, tmpl, title string, data any) {
-	p := page{Title: title, Lang: s.cfg.Language, CSRF: s.csrfToken(w, r), AssetVersion: assetVersion, Data: data}
+	p := page{Title: title, Lang: s.lang(r), Languages: s.cat.Options(), CSRF: s.csrfToken(w, r), AssetVersion: assetVersion, Data: data}
 	if a := authFrom(r.Context()); a != nil && (a.Session == nil || !a.Session.MFAPending) {
 		u := a.User
 		u.Role = a.Role
@@ -235,7 +235,7 @@ type attentionItem struct {
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	sums, err := s.summaries(r)
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	d := map[string]any{"Now": time.Now(), "Total": len(sums)}
@@ -247,7 +247,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			online++
 		case "offline":
 			offline++
-			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID, "Agent offline", relTime(h.LastSeen)})
+			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID, "Agent offline", relTime(s.cat, s.lang(r), h.LastSeen)})
 		}
 		updates += h.Updates
 		crit += h.Critical
@@ -284,7 +284,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	d["Online"], d["Offline"], d["Updates"], d["Reboots"], d["Critical"], d["KEV"] = online, offline, updates, reboots, crit, kev
 	d["Attention"], d["TopRisk"], d["FeedSync"] = att, top, s.lastFeedSync(r)
-	s.renderPage(w, r, 200, "dashboard", s.t("nav.dashboard"), d)
+	s.renderPage(w, r, 200, "dashboard", s.t(r, "nav.dashboard"), d)
 }
 
 func pluralize(n int, one, many string) string {
@@ -299,7 +299,7 @@ func pluralize(n int, one, many string) string {
 func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 	sums, err := s.summaries(r)
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
@@ -335,7 +335,7 @@ func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
 		groups = append(groups, g)
 	}
 	sort.Strings(groups)
-	s.renderPage(w, r, 200, "hosts", s.t("nav.hosts"), map[string]any{"Hosts": filtered, "Query": r.URL.Query().Get("q"), "Status": status, "Group": group, "Groups": groups})
+	s.renderPage(w, r, 200, "hosts", s.t(r, "nav.hosts"), map[string]any{"Hosts": filtered, "Query": r.URL.Query().Get("q"), "Status": status, "Group": group, "Groups": groups})
 }
 
 type hostTab struct {
@@ -361,11 +361,11 @@ var hostCharts = []chartDef{
 func (s *Server) hostPage(w http.ResponseWriter, r *http.Request, tab string) (store.Host, map[string]any, bool) {
 	h, err := s.db.GetHost(r.Context(), chi.URLParam(r, "id"))
 	if errors.Is(err, store.ErrNotFound) {
-		s.httpError(w, r, 404, s.t("error.notfound"))
+		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return h, nil, false
 	}
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return h, nil, false
 	}
 	var st protocol.HostState
@@ -387,7 +387,7 @@ func (s *Server) handleHostOverview(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHostState(w http.ResponseWriter, r *http.Request) {
 	h, err := s.db.GetHost(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
-		s.httpError(w, r, 404, s.t("error.notfound"))
+		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return
 	}
 	var st protocol.HostState
@@ -443,7 +443,7 @@ func (s *Server) handleHostStream(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHostRevoke(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.db.SetHostRevoked(r.Context(), id, true); err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	s.auditReq(r, "host.revoke", id, "")
@@ -454,7 +454,7 @@ func (s *Server) handleHostRevoke(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHostDelete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.db.DeleteHost(r.Context(), id); err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	s.auditReq(r, "host.delete", id, "")

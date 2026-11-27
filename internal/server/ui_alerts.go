@@ -57,7 +57,7 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 		rv = append(rv, ruleView{ru, ruleConfig(ru).Describe(ru.Kind)})
 	}
 	chans, _ := s.db.ListChannels(ctx)
-	s.renderPage(w, r, 200, "alerts", s.t("nav.alerts"), map[string]any{"Firing": view(firing), "Pending": view(pending), "Resolved": view(resolved),
+	s.renderPage(w, r, 200, "alerts", s.t(r, "nav.alerts"), map[string]any{"Firing": view(firing), "Pending": view(pending), "Resolved": view(resolved),
 		"Rules": rv, "Channels": chans})
 }
 
@@ -250,7 +250,7 @@ func (s *Server) channelByID(r *http.Request) (store.Channel, bool) {
 func (s *Server) handleChannelTest(w http.ResponseWriter, r *http.Request) {
 	c, ok := s.channelByID(r)
 	if !ok {
-		s.httpError(w, r, 404, s.t("error.notfound"))
+		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return
 	}
 	m := notify.Message{Event: "test", Severity: "info", Title: "Sentrix test notification", Body: "If you can read this, the " + c.Kind + " channel “" + c.Name + "” works.",

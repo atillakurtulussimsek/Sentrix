@@ -74,7 +74,10 @@ func New(cfg config.Server, db *store.DB, log *slog.Logger) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load i18n: %w", err)
 	}
-	rend, err := newRenderer(cat, cfg.Language)
+	if !cat.Supported(cfg.Language) {
+		return nil, fmt.Errorf("language %q: supported languages are %v", cfg.Language, cat.Languages())
+	}
+	rend, err := newRenderer(cat)
 	if err != nil {
 		return nil, err
 	}

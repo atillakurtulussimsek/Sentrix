@@ -13,7 +13,7 @@ var Templates embed.FS
 //go:embed static
 var Static embed.FS
 
-// I18n holds message catalogs (one JSON file per language).
+// I18n holds message catalogs (web/i18n/<lang>/*.json, merged per language).
 //
-//go:embed i18n/*.json
+//go:embed i18n
 var I18n embed.FS

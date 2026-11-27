@@ -18,16 +18,16 @@ import (
 func (s *Server) handlePlans(w http.ResponseWriter, r *http.Request) {
 	plans, err := s.db.ListPlans(r.Context())
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
-	s.renderPage(w, r, 200, "patches", s.t("nav.patches"), map[string]any{"Plans": plans})
+	s.renderPage(w, r, 200, "patches", s.t(r, "nav.patches"), map[string]any{"Plans": plans})
 }
 
 func (s *Server) handlePlanNew(w http.ResponseWriter, r *http.Request) {
 	sums, err := s.summaries(r)
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	pre := map[string]bool{}
@@ -80,11 +80,11 @@ func (s *Server) planData(r *http.Request) (store.Plan, []store.PlanHost, error)
 func (s *Server) handlePlan(w http.ResponseWriter, r *http.Request) {
 	p, hosts, err := s.planData(r)
 	if errors.Is(err, store.ErrNotFound) {
-		s.httpError(w, r, 404, s.t("error.notfound"))
+		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return
 	}
 	if err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	audit, _ := s.db.ListAudit(r.Context(), p.ID, 200)
@@ -133,7 +133,7 @@ func (s *Server) handlePlanCancel(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHostAction(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if _, err := s.db.GetHost(r.Context(), id); err != nil {
-		s.httpError(w, r, 404, s.t("error.notfound"))
+		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return
 	}
 	action := protocol.Action(r.PostFormValue("action"))
@@ -180,7 +180,7 @@ func (s *Server) handleHostSettings(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	h, err := s.db.GetHost(r.Context(), id)
 	if err != nil {
-		s.httpError(w, r, 404, s.t("error.notfound"))
+		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return
 	}
 	hs, _ := s.db.GetHostSettings(r.Context(), id)
@@ -194,7 +194,7 @@ func (s *Server) handleHostSettings(w http.ResponseWriter, r *http.Request) {
 	hs.ProxmoxVMID = strings.TrimSpace(r.PostFormValue("proxmox_vmid"))
 	hs.ProxmoxNode = strings.TrimSpace(r.PostFormValue("proxmox_node"))
 	if err := s.db.SaveHostSettings(r.Context(), id, hs); err != nil {
-		s.httpError(w, r, 500, s.t("error.internal"))
+		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
 	group := truncate(strings.TrimSpace(r.PostFormValue("group")), 64)
