@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-27
+
+Turkish-first release with signed agent self-update.
+
 ### Added
 - Signed agent self-update: the server fetches release-key signed agent builds (GitHub release by default), shows outdated agents, and in "automatic" mode asks them to update; agents verify the Ed25519 signature, digest and version before replacing themselves and re-executing (no host reboot). Mode per server in *Settings → Enrolment*; per-host opt-out `allow_self_update: false` / `install.sh --no-self-update`.
 - Full Turkish translation; Turkish is now the default language (`language: tr` / `SENTRIX_LANGUAGE`, `en` also supported).
@@ -65,5 +69,6 @@ for small Linux fleets in a single self-hosted server plus a small static agent.
 - Hardening: TOTP 2FA enrolment with QR code, password change (revokes other sessions), scoped API token management UI, per-IP limits for bearer tokens and enrolment, 2 MiB request limit, Secure cookies derived from `base_url`, SECURITY.md and OWASP ASVS L1 self-review.
 - Repository bootstrap: Go module, layout, Makefile, CI, lint config, licence, docs skeleton.
 
-[Unreleased]: https://github.com/atillakurtulussimsek/Sentrix/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/atillakurtulussimsek/Sentrix/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/atillakurtulussimsek/Sentrix/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/atillakurtulussimsek/Sentrix/releases/tag/v0.1.0
