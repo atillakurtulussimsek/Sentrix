@@ -92,7 +92,6 @@ func cacheStatic(h http.Handler) http.Handler {
 	})
 }
 
-
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if err := s.db.SQL().PingContext(r.Context()); err != nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "db unavailable"})
