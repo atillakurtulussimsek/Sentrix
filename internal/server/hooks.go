@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
 	"github.com/atillakurtulussimsek/Sentrix/internal/patch"
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
 )
@@ -61,11 +62,11 @@ func (s *Server) runSnapshotStep(ctx context.Context, p store.Plan, h store.Plan
 	if err != nil {
 		s.audit(ctx, "system", "plan.host.snapshot_failed", h.HostID, "plan="+p.ID+" "+err.Error())
 		if p.SnapshotRequired {
-			_ = s.failHost(ctx, p, &cur, "pre-patch snapshot failed, host not patched: "+err.Error())
+			_ = s.failHost(ctx, p, &cur, s.tDefault("orch.snapshotRequiredFailed", err.Error()))
 			s.kickOrchestrator()
 			return
 		}
-		cur.Output = "snapshot failed (not required, continuing): " + err.Error()
+		cur.Output = s.tDefault("orch.snapshotOptionalFailed", err.Error())
 	} else {
 		cur.Snapshot = name
 		s.audit(ctx, "system", "plan.host.snapshot", h.HostID, "plan="+p.ID+" snapshot="+name)
@@ -105,7 +106,7 @@ func (s *Server) handleHooks(w http.ResponseWriter, r *http.Request) {
 		target, _ := m["url"].(string)
 		views = append(views, hookView{h, target})
 	}
-	s.renderPage(w, r, 200, "settings_hooks", "Snapshot hooks", settingsData("hooks", map[string]any{"Hooks": views}))
+	s.renderPage(w, r, 200, "settings_hooks", s.t(r, "settings.nav.hooks"), settingsData("hooks", map[string]any{"Hooks": views}))
 }
 
 func (s *Server) handleHookSave(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +117,7 @@ func (s *Server) handleHookSave(w http.ResponseWriter, r *http.Request) {
 	kind := r.PostFormValue("kind")
 	name := truncate(strings.TrimSpace(r.PostFormValue("name")), 100)
 	if name == "" {
-		back("error", "Name required.")
+		back("error", s.t(r, "hooks.nameRequired"))
 		return
 	}
 	var cfg any
@@ -124,7 +125,7 @@ func (s *Server) handleHookSave(w http.ResponseWriter, r *http.Request) {
 	case "proxmox":
 		secret, err := s.box.Seal(strings.TrimSpace(r.PostFormValue("token_secret")))
 		if err != nil {
-			back("error", "encrypt secret")
+			back("error", s.t(r, "hooks.encryptFailed"))
 			return
 		}
 		c := patch.ProxmoxConfig{URL: strings.TrimSpace(r.PostFormValue("url")), TokenID: strings.TrimSpace(r.PostFormValue("token_id")), TokenSecret: secret,
@@ -133,34 +134,34 @@ func (s *Server) handleHookSave(w http.ResponseWriter, r *http.Request) {
 		check := c
 		check.TokenSecret = "x"
 		if err := check.Validate(); err != nil || r.PostFormValue("token_secret") == "" {
-			back("error", "Proxmox needs an https URL, an API token ID (user@realm!name) and its secret.")
+			back("error", s.t(r, "hooks.proxmoxInvalid"))
 			return
 		}
 		cfg = c
 	case "webhook":
 		secret, err := s.box.Seal(r.PostFormValue("secret"))
 		if err != nil {
-			back("error", "encrypt secret")
+			back("error", s.t(r, "hooks.encryptFailed"))
 			return
 		}
 		u := strings.TrimSpace(r.PostFormValue("url"))
 		if !strings.HasPrefix(u, "https://") && !strings.HasPrefix(u, "http://") {
-			back("error", "Webhook URL required.")
+			back("error", s.t(r, "hooks.webhookUrlRequired"))
 			return
 		}
 		cfg = patch.WebhookConfig{URL: u, Secret: secret}
 	default:
-		back("error", "Unknown hook type.")
+		back("error", s.t(r, "hooks.unknownKind"))
 		return
 	}
 	b, _ := json.Marshal(cfg)
 	hk, err := s.db.SaveHook(r.Context(), store.Hook{Name: name, Kind: kind, Config: string(b)})
 	if err != nil {
-		back("error", "Could not save hook (name taken?).")
+		back("error", s.t(r, "hooks.saveFailed"))
 		return
 	}
 	s.auditReq(r, "hook.create", hk.ID, "name="+name+" kind="+kind)
-	back("ok", "Hook saved. Map hosts to VMs under each host's “Patches & actions” tab.")
+	back("ok", s.t(r, "hooks.saved"))
 }
 
 func (s *Server) handleHookTest(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +173,10 @@ func (s *Server) handleHookTest(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
-	var msg string
+	// key/arg describe the result; the audit log keeps English, the flash uses the request language
+	var key string
+	var args []any
+	kind := "ok"
 	switch hk.Kind {
 	case "proxmox":
 		var c patch.ProxmoxConfig
@@ -180,24 +184,22 @@ func (s *Server) handleHookTest(w http.ResponseWriter, r *http.Request) {
 		c.TokenSecret, _ = s.box.Open(c.TokenSecret)
 		v, err := c.Ping(ctx)
 		if err != nil {
-			msg = "Connection failed: " + err.Error()
+			key, args, kind = "hooks.connFailed", []any{err.Error()}, "error"
 		} else {
-			msg = "Connected to Proxmox VE " + v + " (no snapshot was taken)."
+			key, args = "hooks.connOk", []any{v}
 		}
 	case "webhook":
 		_, err := s.runHook(ctx, id, patch.HookTarget{PlanID: "test", PlanName: "connection test", Hostname: "sentrix-test"})
 		if err != nil {
-			msg = "Webhook failed: " + err.Error()
+			key, args, kind = "hooks.webhookFailed", []any{err.Error()}, "error"
 		} else {
-			msg = "Webhook answered 2xx."
+			key = "hooks.webhookOk"
 		}
+	default:
+		key, kind = "hooks.unknownKind", "error"
 	}
-	kind := "ok"
-	if strings.Contains(msg, "failed") {
-		kind = "error"
-	}
-	s.auditReq(r, "hook.test", id, msg)
-	s.setFlash(w, kind, msg)
+	s.auditReq(r, "hook.test", id, s.cat.T(i18n.FallbackLang, key, args...))
+	s.setFlash(w, kind, s.t(r, key, args...))
 	http.Redirect(w, r, "/settings/hooks", http.StatusSeeOther)
 }
 

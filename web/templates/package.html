@@ -1,19 +1,19 @@
 {{define "title"}}{{.Data.Name}}{{end}}
 {{define "content"}}
 <a href="/vulns" class="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">← {{t "nav.vulns"}}</a>
-<h1 class="mt-2 text-2xl font-semibold tracking-tight">Package <span class="font-mono">{{.Data.Name}}</span></h1>
+<h1 class="mt-2 text-2xl font-semibold tracking-tight">{{t "common.package"}} <span class="font-mono">{{.Data.Name}}</span></h1>
 <div class="mt-6 grid gap-6 lg:grid-cols-2">
   <section class="card overflow-x-auto">
-    <div class="card-header"><h2>Installed on</h2><span class="text-xs text-zinc-500">{{len .Data.Hosts}}</span></div>
-    {{if .Data.Hosts}}<table class="table table-compact"><thead><tr><th>Host</th><th>Binary</th><th>Version</th></tr></thead><tbody>
+    <div class="card-header"><h2>{{t "pkg.installedOn"}}</h2><span class="text-xs text-zinc-500">{{len .Data.Hosts}}</span></div>
+    {{if .Data.Hosts}}<table class="table table-compact"><thead><tr><th>{{t "common.host"}}</th><th>{{t "pkg.col.binary"}}</th><th>{{t "common.version"}}</th></tr></thead><tbody>
     {{range .Data.Hosts}}<tr><td><a href="/hosts/{{.HostID}}/inventory?q={{.Name}}" class="font-medium hover:underline">{{.Hostname}}</a></td><td>{{.Name}} <span class="text-xs text-zinc-500">{{.Arch}}</span></td><td class="font-mono text-xs">{{.Version}}</td></tr>{{end}}
-    </tbody></table>{{else}}<div class="empty">Not installed on any host.</div>{{end}}
+    </tbody></table>{{else}}<div class="empty">{{t "pkg.notInstalled"}}</div>{{end}}
   </section>
   <section class="card overflow-x-auto">
-    <div class="card-header"><h2>Open vulnerabilities</h2><span class="text-xs text-zinc-500">{{len .Data.Findings}}</span></div>
-    {{if .Data.Findings}}<table class="table table-compact"><thead><tr><th class="text-right">Risk</th><th>CVE</th><th>Host</th><th>Fixed in</th></tr></thead><tbody>
+    <div class="card-header"><h2>{{t "pkg.openVulns"}}</h2><span class="text-xs text-zinc-500">{{len .Data.Findings}}</span></div>
+    {{if .Data.Findings}}<table class="table table-compact"><thead><tr><th class="text-right">{{t "common.risk"}}</th><th>CVE</th><th>{{t "common.host"}}</th><th>{{t "vuln.col.fixedIn"}}</th></tr></thead><tbody>
     {{range .Data.Findings}}<tr><td class="text-right"><span class="risk risk-{{riskclass .Risk}}">{{printf "%.0f" .Risk}}</span></td><td><a href="/vulns/{{.VulnID}}" class="font-mono text-xs hover:underline">{{.VulnID}}</a></td><td>{{.Hostname}}</td><td class="font-mono text-xs">{{or .Fixed "—"}}</td></tr>{{end}}
-    </tbody></table>{{else}}<div class="empty">None.</div>{{end}}
+    </tbody></table>{{else}}<div class="empty">{{t "common.none"}}</div>{{end}}
   </section>
 </div>
 {{end}}

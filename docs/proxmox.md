@@ -1,3 +1,5 @@
+[Türkçe](tr/proxmox.md) · **English**
+
 # Proxmox VE snapshot integration
 
 Sentrix can snapshot a VM or container right before patching it, and abort that host if the snapshot fails.

@@ -1,4 +1,9 @@
+[Türkçe](tr/notifications.md) · **English**
+
 # Alerts & notifications
+
+Notifications are sent in the server's default language: `language` / `SENTRIX_LANGUAGE` (default `tr`;
+see [configuration](configuration.md#language)).
 
 ## Channels (*Settings → Notification channels*)
 

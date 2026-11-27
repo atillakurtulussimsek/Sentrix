@@ -7,5 +7,6 @@ gateway_url: https://127.0.0.1:18443
 offline_after: 30s
 heartbeat_interval: 5s
 dev_insecure_cookies: true
+language: tr   # tr | en
 feeds:
   enabled: true   # downloads real feeds (Debian tracker, OSV, KEV, EPSS)

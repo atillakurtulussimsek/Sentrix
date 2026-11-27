@@ -1,55 +1,55 @@
-{{define "title"}}{{.Data.Host.Hostname}} · Patches{{end}}
+{{define "title"}}{{.Data.Host.Hostname}} · {{t "host.tab.patches"}}{{end}}
 {{define "content"}}
 {{template "hosthead" .}}
 <div class="grid gap-6 lg:grid-cols-3">
   <div class="space-y-6 lg:col-span-2">
     <section class="card">
-      <div class="card-header"><h2>Patch history</h2>{{if can .User "operator"}}<a href="/patches/new?hosts={{.Data.Host.ID}}" class="text-sm text-teal-700 hover:underline dark:text-teal-300">New plan</a>{{end}}</div>
+      <div class="card-header"><h2>{{t "host.patchHistory"}}</h2>{{if can .User "operator"}}<a href="/patches/new?hosts={{.Data.Host.ID}}" class="text-sm text-teal-700 hover:underline dark:text-teal-300">{{t "host.newPlan"}}</a>{{end}}</div>
       {{if .Data.Plans}}<table class="table table-compact"><tbody>{{range .Data.Plans}}<tr><td><a href="/patches/{{.ID}}" class="hover:underline">{{.Name}}</a></td><td>{{template "planstatus" .Status}}</td><td class="text-right text-xs text-zinc-500">{{fmtTime .CreatedAt}}</td></tr>{{end}}</tbody></table>
-      {{else}}<div class="empty">No patch plans for this host yet.</div>{{end}}
+      {{else}}<div class="empty">{{t "host.noPlans"}}</div>{{end}}
     </section>
     <section class="card overflow-x-auto">
-      <div class="card-header"><h2>Commands</h2></div>
-      {{if .Data.Commands}}<table class="table table-compact"><thead><tr><th>Action</th><th>Status</th><th>By</th><th>Queued</th><th>Result</th></tr></thead><tbody>{{range .Data.Commands}}
-      <tr><td><code class="text-xs">{{.Action}}</code>{{if .DryRun}} <span class="badge badge-muted">dry run</span>{{end}}</td>
-        <td><span class="badge {{if eq .Status "ok"}}badge-online{{else if or (eq .Status "failed") (eq .Status "rejected") (eq .Status "expired")}}badge-offline{{end}}">{{.Status}}</span></td>
+      <div class="card-header"><h2>{{t "host.commands"}}</h2></div>
+      {{if .Data.Commands}}<table class="table table-compact"><thead><tr><th>{{t "host.col.action"}}</th><th>{{t "common.status"}}</th><th>{{t "host.col.by"}}</th><th>{{t "host.col.queued"}}</th><th>{{t "host.col.result"}}</th></tr></thead><tbody>{{range .Data.Commands}}
+      <tr><td><code class="text-xs">{{.Action}}</code>{{if .DryRun}} <span class="badge badge-muted">{{t "host.dryRun"}}</span>{{end}}</td>
+        <td><span class="badge {{if eq .Status "ok"}}badge-online{{else if or (eq .Status "failed") (eq .Status "rejected") (eq .Status "expired")}}badge-offline{{end}}">{{t (printf "host.cmd.%s" .Status)}}</span></td>
         <td class="text-xs text-zinc-500">{{.CreatedBy}}</td><td class="text-xs text-zinc-500">{{reltime .CreatedAt}}</td>
         <td class="max-w-xs truncate text-xs text-zinc-500">{{with .Result}}{{or .Error .Output}}{{end}}</td></tr>{{end}}</tbody></table>
-      {{else}}<div class="empty">No commands yet.</div>{{end}}
+      {{else}}<div class="empty">{{t "host.noCommands"}}</div>{{end}}
     </section>
   </div>
   <div class="space-y-6">
     {{if can .User "operator"}}
     <section class="card space-y-3 p-5">
-      <h2 class="text-sm font-semibold">Actions</h2>
-      <p class="text-xs text-zinc-500">The agent only accepts a fixed set of typed actions — no remote shell.</p>
-      <form method="post" action="/hosts/{{.Data.Host.ID}}/actions"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="refresh_inventory"><button class="btn-secondary w-full">Refresh inventory</button></form>
-      <form method="post" action="/hosts/{{.Data.Host.ID}}/actions" class="flex gap-2"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="restart_service"><input name="service" required placeholder="nginx.service" class="input"><button class="btn-secondary whitespace-nowrap">Restart</button></form>
-      <form method="post" action="/hosts/{{.Data.Host.ID}}/actions" class="space-y-2" data-confirm="Reboot {{.Data.Host.Hostname}} now?"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reboot">
-        <label class="flex items-center gap-2 text-xs"><input type="checkbox" name="confirm" value="1"> I understand the host will reboot</label><button class="btn-danger w-full">Reboot</button></form>
+      <h2 class="text-sm font-semibold">{{t "common.actions"}}</h2>
+      <p class="text-xs text-zinc-500">{{t "host.actionsHint"}}</p>
+      <form method="post" action="/hosts/{{.Data.Host.ID}}/actions"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="refresh_inventory"><button class="btn-secondary w-full">{{t "host.refreshInventory"}}</button></form>
+      <form method="post" action="/hosts/{{.Data.Host.ID}}/actions" class="flex gap-2"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="restart_service"><input name="service" required placeholder="nginx.service" class="input"><button class="btn-secondary whitespace-nowrap">{{t "host.restart"}}</button></form>
+      <form method="post" action="/hosts/{{.Data.Host.ID}}/actions" class="space-y-2" data-confirm="{{t "host.rebootConfirm" .Data.Host.Hostname}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reboot">
+        <label class="flex items-center gap-2 text-xs"><input type="checkbox" name="confirm" value="1"> {{t "host.rebootAck"}}</label><button class="btn-danger w-full">{{t "host.rebootBtn"}}</button></form>
     </section>
     {{end}}
     {{if can .User "admin"}}
     <form method="post" action="/hosts/{{.Data.Host.ID}}/settings" class="card space-y-3 p-5">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <h2 class="text-sm font-semibold">Host settings</h2>
-      <label class="block"><span class="label">Group</span><input name="group" value="{{.Data.Host.Group}}" class="input mt-1"></label>
-      <label class="block"><span class="label">Tags</span><input name="tags" value="{{join .Data.Host.Tags ", "}}" class="input mt-1"></label>
-      <label class="block"><span class="label">Watched services</span><input name="watch_services" value="{{join .Data.Settings.WatchServices ", "}}" placeholder="nginx.service, postgresql.service" class="input mt-1"></label>
-      <label class="block"><span class="label">TLS endpoints (expiry check)</span><input name="tls_endpoints" value="{{join .Data.Settings.TLSEndpoints ", "}}" placeholder="example.com:443" class="input mt-1"></label>
+      <h2 class="text-sm font-semibold">{{t "host.settings"}}</h2>
+      <label class="block"><span class="label">{{t "common.group"}}</span><input name="group" value="{{.Data.Host.Group}}" class="input mt-1"></label>
+      <label class="block"><span class="label">{{t "common.tags"}}</span><input name="tags" value="{{join .Data.Host.Tags ", "}}" class="input mt-1"></label>
+      <label class="block"><span class="label">{{t "host.watchedServices"}}</span><input name="watch_services" value="{{join .Data.Settings.WatchServices ", "}}" placeholder="nginx.service, postgresql.service" class="input mt-1"></label>
+      <label class="block"><span class="label">{{t "host.tlsEndpoints"}}</span><input name="tls_endpoints" value="{{join .Data.Settings.TLSEndpoints ", "}}" placeholder="example.com:443" class="input mt-1"></label>
       <div class="grid grid-cols-2 gap-2">
-        <label class="block"><span class="label">Proxmox node</span><input name="proxmox_node" value="{{.Data.Settings.ProxmoxNode}}" class="input mt-1"></label>
-        <label class="block"><span class="label">Proxmox VM ID</span><input name="proxmox_vmid" value="{{.Data.Settings.ProxmoxVMID}}" class="input mt-1"></label>
+        <label class="block"><span class="label">{{t "host.proxmoxNode"}}</span><input name="proxmox_node" value="{{.Data.Settings.ProxmoxNode}}" class="input mt-1"></label>
+        <label class="block"><span class="label">{{t "host.proxmoxVMID"}}</span><input name="proxmox_vmid" value="{{.Data.Settings.ProxmoxVMID}}" class="input mt-1"></label>
       </div>
-      <button class="btn-secondary">Save</button>
+      <button class="btn-secondary">{{t "common.save"}}</button>
     </form>
     <section class="card space-y-2 p-5">
-      <h2 class="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h2>
-      <form method="post" action="/hosts/{{.Data.Host.ID}}/revoke" data-confirm="Revoke the agent certificate? The agent will be locked out."><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="btn-secondary w-full">Revoke agent certificate</button></form>
-      <form method="post" action="/hosts/{{.Data.Host.ID}}/delete" data-confirm="Delete {{.Data.Host.Hostname}} and all its data?"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="btn-danger w-full">Delete host</button></form>
+      <h2 class="text-sm font-semibold text-red-700 dark:text-red-400">{{t "host.dangerZone"}}</h2>
+      <form method="post" action="/hosts/{{.Data.Host.ID}}/revoke" data-confirm="{{t "host.revokeConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="btn-secondary w-full">{{t "host.revoke"}}</button></form>
+      <form method="post" action="/hosts/{{.Data.Host.ID}}/delete" data-confirm="{{t "host.deleteConfirm" .Data.Host.Hostname}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="btn-danger w-full">{{t "host.delete"}}</button></form>
     </section>
     {{end}}
   </div>
 </div>
 {{end}}
-{{define "planstatus"}}{{if eq . "done"}}<span class="badge badge-online">done</span>{{else if eq . "failed"}}<span class="badge badge-offline">failed</span>{{else if eq . "ready"}}<span class="badge badge-warn">awaiting approval</span>{{else if eq . "cancelled"}}<span class="badge badge-muted">cancelled</span>{{else if eq . "dry_run"}}<span class="badge">dry run…</span>{{else}}<span class="badge">{{.}}</span>{{end}}{{end}}
+{{define "planstatus"}}{{if eq . "done"}}<span class="badge badge-online">{{t "host.plan.done"}}</span>{{else if eq . "failed"}}<span class="badge badge-offline">{{t "host.plan.failed"}}</span>{{else if eq . "ready"}}<span class="badge badge-warn">{{t "host.plan.ready"}}</span>{{else if eq . "cancelled"}}<span class="badge badge-muted">{{t "host.plan.cancelled"}}</span>{{else if eq . "dry_run"}}<span class="badge">{{t "host.plan.dry_run"}}</span>{{else}}<span class="badge">{{.}}</span>{{end}}{{end}}

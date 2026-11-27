@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -45,12 +46,12 @@ func (s *Server) handlePlanNew(w http.ResponseWriter, r *http.Request) {
 	if scope == "" {
 		scope = "security"
 	}
-	s.renderPage(w, r, 200, "patch_new", "New patch plan", map[string]any{"Hosts": sums, "Selected": pre, "Groups": keysOf(groups), "Scope": scope, "Hooks": hooks})
+	s.renderPage(w, r, 200, "patch_new", s.t(r, "plan.new"), map[string]any{"Hosts": sums, "Selected": pre, "Groups": keysOf(groups), "Scope": scope, "Hooks": hooks})
 }
 
 func (s *Server) handlePlanCreate(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		s.httpError(w, r, 400, "bad form")
+		s.httpError(w, r, 400, s.t(r, "common.invalidForm"))
 		return
 	}
 	canary, _ := strconv.Atoi(r.PostFormValue("canary"))
@@ -64,7 +65,7 @@ func (s *Server) handlePlanCreate(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/patches/new", http.StatusSeeOther)
 		return
 	}
-	s.setFlash(w, "ok", "Plan created. Dry run started on every host — review the exact package changes, then approve.")
+	s.setFlash(w, "ok", s.t(r, "plan.flash.created"))
 	http.Redirect(w, r, "/patches/"+p.ID, http.StatusSeeOther) //nolint:gosec // uuid
 }
 
@@ -110,11 +111,11 @@ func (s *Server) handlePlan(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePlanApprove(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if r.PostFormValue("confirm") != "1" {
-		s.setFlash(w, "error", "Tick the confirmation box to approve.")
+		s.setFlash(w, "error", s.t(r, "plan.flash.confirmRequired"))
 	} else if err := s.ApprovePlan(r.Context(), id, actorOf(r)); err != nil {
 		s.setFlash(w, "error", err.Error())
 	} else {
-		s.setFlash(w, "ok", "Plan approved — patching started.")
+		s.setFlash(w, "ok", s.t(r, "plan.flash.approved"))
 	}
 	http.Redirect(w, r, "/patches/"+id, http.StatusSeeOther) //nolint:gosec // local path
 }
@@ -124,7 +125,7 @@ func (s *Server) handlePlanCancel(w http.ResponseWriter, r *http.Request) {
 	if err := s.CancelPlan(r.Context(), id, actorOf(r)); err != nil {
 		s.setFlash(w, "error", err.Error())
 	} else {
-		s.setFlash(w, "ok", "Plan cancelled.")
+		s.setFlash(w, "ok", s.t(r, "plan.flash.cancelled"))
 	}
 	http.Redirect(w, r, "/patches/"+id, http.StatusSeeOther) //nolint:gosec // local path
 }
@@ -142,7 +143,7 @@ func (s *Server) handleHostAction(w http.ResponseWriter, r *http.Request) {
 	case protocol.ActionRefreshInventory, protocol.ActionScan:
 	case protocol.ActionReboot:
 		if r.PostFormValue("confirm") != "1" {
-			s.setFlash(w, "error", "Tick the confirmation box to reboot.")
+			s.setFlash(w, "error", s.t(r, "patch.action.rebootConfirm"))
 			http.Redirect(w, r, "/hosts/"+id+"/patches", http.StatusSeeOther) //nolint:gosec // local path
 			return
 		}
@@ -150,13 +151,13 @@ func (s *Server) handleHostAction(w http.ResponseWriter, r *http.Request) {
 	case protocol.ActionRestartService:
 		params = protocol.RestartServiceParams{Name: strings.TrimSpace(r.PostFormValue("service"))}
 	default:
-		s.httpError(w, r, 400, "unsupported action")
+		s.httpError(w, r, 400, s.t(r, "patch.action.unsupported"))
 		return
 	}
 	if _, err := s.QueueCommand(r.Context(), id, action, params, false, "", actorOf(r)); err != nil {
 		s.setFlash(w, "error", err.Error())
 	} else {
-		s.setFlash(w, "ok", fmt.Sprintf("Queued %s — the agent picks it up within seconds.", action))
+		s.setFlash(w, "ok", s.t(r, "patch.action.queued", string(action)))
 	}
 	http.Redirect(w, r, "/hosts/"+id+"/patches", http.StatusSeeOther) //nolint:gosec // local path
 }
@@ -172,8 +173,8 @@ func (s *Server) handleHostPatches(w http.ResponseWriter, r *http.Request) {
 	s.renderPage(w, r, 200, "host_patches", h.Hostname, d)
 }
 
-func (s *Server) patchHostTabs(_ any, _ string) []hostTab {
-	return []hostTab{{Key: "patches", Label: "Patches & actions", Path: "/patches"}}
+func (s *Server) patchHostTabs(ctx context.Context, _ string) []hostTab {
+	return []hostTab{{Key: "patches", Label: s.cat.T(s.ctxLang(ctx), "patch.hostTab"), Path: "/patches"}}
 }
 
 func (s *Server) handleHostSettings(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +202,7 @@ func (s *Server) handleHostSettings(w http.ResponseWriter, r *http.Request) {
 	tags := splitList(r.PostFormValue("tags"))
 	_ = s.db.SetHostLabels(r.Context(), id, group, tags)
 	s.auditReq(r, "host.settings", id, fmt.Sprintf("group=%s tags=%s watch=%s tls=%s proxmox=%s/%s", group, strings.Join(tags, ","), strings.Join(hs.WatchServices, ","), strings.Join(hs.TLSEndpoints, ","), hs.ProxmoxNode, hs.ProxmoxVMID))
-	s.setFlash(w, "ok", "Settings of "+h.Hostname+" saved.")
+	s.setFlash(w, "ok", s.t(r, "patch.hostSettings.saved", h.Hostname))
 	http.Redirect(w, r, "/hosts/"+id+"/patches", http.StatusSeeOther) //nolint:gosec // local path
 }
 
@@ -223,7 +224,7 @@ func (s *Server) handlePolicies(w http.ResponseWriter, r *http.Request) {
 			v.OpenNow, _ = wd.Open(time.Now())
 			v.NextWindow = wd.Next(time.Now())
 		} else {
-			v.Err = err.Error()
+			v.Err = s.t(r, "patch.policy.windowError", err.Error())
 		}
 		views = append(views, v)
 	}
@@ -232,7 +233,7 @@ func (s *Server) handlePolicies(w http.ResponseWriter, r *http.Request) {
 	for _, h := range hosts {
 		groups[h.Group] = true
 	}
-	s.renderPage(w, r, 200, "settings_policies", "Patch policies", settingsData("policies", map[string]any{"Policies": views, "Hooks": hooks, "Groups": keysOf(groups)}))
+	s.renderPage(w, r, 200, "settings_policies", s.t(r, "patch.policy.title"), settingsData("policies", map[string]any{"Policies": views, "Hooks": hooks, "Groups": keysOf(groups)}))
 }
 
 func (s *Server) handlePolicySave(w http.ResponseWriter, r *http.Request) {
@@ -248,13 +249,13 @@ func (s *Server) handlePolicySave(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/settings/policies", http.StatusSeeOther)
 	}
 	if p.Name == "" {
-		back("error", "Name is required.")
+		back("error", s.t(r, "patch.policy.nameRequired"))
 		return
 	}
 	switch p.Mode {
 	case patch.ModeNotifyOnly, patch.ModeAutoSecurity, patch.ModeAutoAll:
 	default:
-		back("error", "Invalid mode.")
+		back("error", s.t(r, "patch.policy.invalidMode"))
 		return
 	}
 	if p.Reboot != "never" && p.Reboot != "if_required" && p.Reboot != "always" {
@@ -262,21 +263,21 @@ func (s *Server) handlePolicySave(w http.ResponseWriter, r *http.Request) {
 	}
 	if p.Mode != patch.ModeNotifyOnly {
 		if _, err := patch.ParseWindow(p.WindowCron, time.Duration(p.WindowMinutes)*time.Minute); err != nil {
-			back("error", "Automatic policies need a valid maintenance window: "+err.Error())
+			back("error", s.t(r, "patch.policy.invalidWindow", err.Error()))
 			return
 		}
 		if r.PostFormValue("accept_disclaimer") != "1" {
-			back("error", "Read and accept the disclaimer to enable automatic patching.")
+			back("error", s.t(r, "patch.policy.acceptDisclaimer"))
 			return
 		}
 	}
 	p, err := s.db.SavePolicy(r.Context(), p)
 	if err != nil {
-		back("error", "Could not save policy (name already used?).")
+		back("error", s.t(r, "patch.policy.saveFailed"))
 		return
 	}
 	s.auditReq(r, "policy.save", p.ID, fmt.Sprintf("name=%q group=%q mode=%s window=%q/%dm reboot=%s canary=%d parallel=%d enabled=%v", p.Name, p.Group, p.Mode, p.WindowCron, p.WindowMinutes, p.Reboot, p.Canary, p.MaxParallel, p.Enabled))
-	back("ok", "Policy saved.")
+	back("ok", s.t(r, "patch.policy.saved"))
 }
 
 func (s *Server) handlePolicyDelete(w http.ResponseWriter, r *http.Request) {

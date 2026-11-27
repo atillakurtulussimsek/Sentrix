@@ -52,9 +52,10 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 		store.Rule
 		Desc string
 	}
+	tr := func(k string, a ...any) string { return s.t(r, k, a...) }
 	var rv []ruleView
 	for _, ru := range rules {
-		rv = append(rv, ruleView{ru, ruleConfig(ru).Describe(ru.Kind)})
+		rv = append(rv, ruleView{ru, ruleConfig(ru).DescribeIn(ru.Kind, tr)})
 	}
 	chans, _ := s.db.ListChannels(ctx)
 	s.renderPage(w, r, 200, "alerts", s.t(r, "nav.alerts"), map[string]any{"Firing": view(firing), "Pending": view(pending), "Resolved": view(resolved),
@@ -63,7 +64,7 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleRuleSave(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		s.httpError(w, r, 400, "bad form")
+		s.httpError(w, r, 400, s.t(r, "common.invalidForm"))
 		return
 	}
 	back := func(kind, msg string) {
@@ -81,12 +82,12 @@ func (s *Server) handleRuleSave(w http.ResponseWriter, r *http.Request) {
 	}
 	forDur, err := time.ParseDuration(defaultStr(r.PostFormValue("for"), "0s"))
 	if err != nil {
-		back("error", "invalid 'for' duration")
+		back("error", s.t(r, "alert.rule.invalidFor"))
 		return
 	}
 	cool, err := time.ParseDuration(defaultStr(r.PostFormValue("cooldown"), "6h"))
 	if err != nil {
-		back("error", "invalid cooldown")
+		back("error", s.t(r, "alert.rule.invalidCooldown"))
 		return
 	}
 	sev := r.PostFormValue("severity")
@@ -97,15 +98,15 @@ func (s *Server) handleRuleSave(w http.ResponseWriter, r *http.Request) {
 	ru := store.Rule{ID: r.PostFormValue("id"), Name: truncate(strings.TrimSpace(r.PostFormValue("name")), 100), Kind: kind, Config: string(b), Severity: sev,
 		Channels: r.PostForm["channels"], For: forDur, Cooldown: cool, Enabled: r.PostFormValue("enabled") == "1"}
 	if ru.Name == "" {
-		ru.Name = cfg.Describe(kind)
+		ru.Name = cfg.DescribeIn(kind, func(k string, a ...any) string { return s.t(r, k, a...) })
 	}
 	ru, err = s.db.SaveRule(r.Context(), ru)
 	if err != nil {
-		back("error", "could not save rule")
+		back("error", s.t(r, "alert.rule.saveFailed"))
 		return
 	}
 	s.auditReq(r, "alert_rule.save", ru.ID, fmt.Sprintf("name=%q kind=%s %s for=%s cooldown=%s enabled=%v", ru.Name, kind, cfg.Describe(kind), forDur, cool, ru.Enabled))
-	back("ok", "Rule saved.")
+	back("ok", s.t(r, "alert.rule.saved"))
 }
 
 func (s *Server) handleRuleToggle(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +159,7 @@ func (s *Server) handleChannels(w http.ResponseWriter, r *http.Request) {
 	digestCron, _ := s.db.GetSetting(ctx, "digest_cron")
 	digestCh, _ := s.db.GetSetting(ctx, "digest_channels")
 	digestLast, _ := s.db.GetSetting(ctx, "digest_last")
-	s.renderPage(w, r, 200, "settings_channels", "Notification channels", settingsData("channels", map[string]any{"Channels": views, "Logs": logs, "Names": names,
+	s.renderPage(w, r, 200, "settings_channels", s.t(r, "alert.channels"), settingsData("channels", map[string]any{"Channels": views, "Logs": logs, "Names": names,
 		"DigestCron": digestCron, "DigestChannels": store.SplitTags(digestCh), "DigestLast": digestLast}))
 }
 
@@ -190,50 +191,50 @@ func (s *Server) handleChannelSave(w http.ResponseWriter, r *http.Request) {
 		To: strings.TrimSpace(r.PostFormValue("to")), TLSMode: r.PostFormValue("tls_mode")}
 	var err error
 	if cfg.Secret, err = s.box.Seal(r.PostFormValue("secret")); err != nil {
-		back("error", "encrypt secret")
+		back("error", s.t(r, "alert.channel.encryptFailed"))
 		return
 	}
 	if cfg.Token, err = s.box.Seal(r.PostFormValue("token")); err != nil {
-		back("error", "encrypt secret")
+		back("error", s.t(r, "alert.channel.encryptFailed"))
 		return
 	}
 	if cfg.Password, err = s.box.Seal(r.PostFormValue("password")); err != nil {
-		back("error", "encrypt secret")
+		back("error", s.t(r, "alert.channel.encryptFailed"))
 		return
 	}
 	switch kind {
 	case "webhook", "slack", "discord":
 		if !strings.HasPrefix(cfg.URL, "https://") && !strings.HasPrefix(cfg.URL, "http://") {
-			back("error", "A webhook URL (http/https) is required.")
+			back("error", s.t(r, "alert.channel.webhookRequired"))
 			return
 		}
 	case "telegram":
 		if r.PostFormValue("token") == "" || cfg.ChatID == "" {
-			back("error", "Telegram needs a bot token and chat ID.")
+			back("error", s.t(r, "alert.channel.telegramRequired"))
 			return
 		}
 	case "ntfy":
 		if cfg.Topic == "" {
-			back("error", "ntfy needs a topic.")
+			back("error", s.t(r, "alert.channel.ntfyRequired"))
 			return
 		}
 	case "email":
 		if cfg.Host == "" || cfg.From == "" || cfg.To == "" {
-			back("error", "Email needs SMTP host, from and to.")
+			back("error", s.t(r, "alert.channel.emailRequired"))
 			return
 		}
 	default:
-		back("error", "Unknown channel type.")
+		back("error", s.t(r, "alert.channel.unknownKind"))
 		return
 	}
 	b, _ := json.Marshal(cfg) //nolint:gosec // secret fields are sealed (AES-GCM) above
 	c, err := s.db.SaveChannel(r.Context(), store.Channel{Name: truncate(strings.TrimSpace(r.PostFormValue("name")), 100), Kind: kind, Config: string(b), Enabled: true})
 	if err != nil {
-		back("error", "Could not save channel (name taken?).")
+		back("error", s.t(r, "alert.channel.saveFailed"))
 		return
 	}
 	s.auditReq(r, "channel.create", c.ID, "name="+c.Name+" kind="+kind)
-	back("ok", "Channel saved. Use “Test” to send a test message.")
+	back("ok", s.t(r, "alert.channel.saved"))
 }
 
 func (s *Server) channelByID(r *http.Request) (store.Channel, bool) {
@@ -253,15 +254,14 @@ func (s *Server) handleChannelTest(w http.ResponseWriter, r *http.Request) {
 		s.httpError(w, r, 404, s.t(r, "error.notfound"))
 		return
 	}
-	m := notify.Message{Event: "test", Severity: "info", Title: "Sentrix test notification", Body: "If you can read this, the " + c.Kind + " channel “" + c.Name + "” works.",
-		URL: strings.TrimRight(s.cfg.BaseURL, "/") + "/settings/channels", Time: time.Now()}
+	m := s.testNotification(c)
 	err := s.sendChannel(r.Context(), c, m)
 	status := "sent"
 	if err != nil {
 		status = "failed"
-		s.setFlash(w, "error", "Test failed: "+err.Error())
+		s.setFlash(w, "error", s.t(r, "alert.channel.testFailed", err.Error()))
 	} else {
-		s.setFlash(w, "ok", "Test message sent to "+c.Name+".")
+		s.setFlash(w, "ok", s.t(r, "alert.channel.testSent", c.Name))
 	}
 	errMsg := ""
 	if err != nil {
@@ -290,7 +290,7 @@ func (s *Server) handleChannelDelete(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDigestSave(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		s.httpError(w, r, 400, "bad form")
+		s.httpError(w, r, 400, s.t(r, "common.invalidForm"))
 		return
 	}
 	expr := strings.TrimSpace(r.PostFormValue("digest_cron"))
@@ -308,10 +308,10 @@ func (s *Server) handleDigestSave(w http.ResponseWriter, r *http.Request) {
 		if err := s.sendDigest(r.Context()); err != nil {
 			s.setFlash(w, "error", err.Error())
 		} else {
-			s.setFlash(w, "ok", "Digest sent.")
+			s.setFlash(w, "ok", s.t(r, "alert.digest.sent"))
 		}
 	} else {
-		s.setFlash(w, "ok", "Digest schedule saved.")
+		s.setFlash(w, "ok", s.t(r, "alert.digest.saved"))
 	}
 	http.Redirect(w, r, "/settings/channels", http.StatusSeeOther)
 }

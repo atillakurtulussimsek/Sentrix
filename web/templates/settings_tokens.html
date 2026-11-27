@@ -1,24 +1,24 @@
-{{define "title"}}API tokens{{end}}
+{{define "title"}}{{t "settings.nav.tokens"}}{{end}}
 {{define "content"}}
 {{template "settingsnav" .}}
-{{with .Data.NewToken}}<section class="card mb-6 border-teal-300 p-5 dark:border-teal-800"><h2 class="font-semibold">Token created — copy it now, it will not be shown again</h2><pre class="code mt-3" data-copy>{{.}}</pre></section>{{end}}
+{{with .Data.NewToken}}<section class="card mb-6 border-teal-300 p-5 dark:border-teal-800"><h2 class="font-semibold">{{t "tokens.createdOnce"}}</h2><pre class="code mt-3" data-copy title="{{t "ui.clickToCopy"}}">{{.}}</pre></section>{{end}}
 <div class="grid gap-6 lg:grid-cols-3">
   <section class="card overflow-x-auto lg:col-span-2">
-    <div class="card-header"><h2>API tokens</h2></div>
-    {{if .Data.Tokens}}<table class="table table-compact"><thead><tr><th>Name</th><th>Owner</th><th>Scope</th><th>Created</th><th>Expires</th><th>Last used</th><th></th></tr></thead><tbody>
-    {{range .Data.Tokens}}<tr><td class="font-medium">{{.Name}}</td><td>{{.Owner}}</td><td><span class="badge">{{.Scope}}</span></td><td class="text-xs">{{fmtTime .CreatedAt}}</td>
-      <td class="text-xs">{{if .ExpiresAt.IsZero}}never{{else}}{{fmtTime .ExpiresAt}}{{end}}</td><td class="text-xs">{{if .LastUsed.IsZero}}never{{else}}{{reltime .LastUsed}}{{end}}</td>
-      <td class="text-right"><form method="post" action="/settings/tokens/{{.ID}}/delete" data-confirm="Revoke token {{.Name}}?"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-red-600 hover:underline">revoke</button></form></td></tr>{{end}}
-    </tbody></table>{{else}}<div class="empty">No API tokens.</div>{{end}}
-    <div class="border-t border-zinc-100 px-5 py-4 text-xs text-zinc-500 dark:border-zinc-800">Use with the CLI: <code>sentrix login --server {{.Data.Base}} --token sxa_…</code> or send <code>Authorization: Bearer sxa_…</code>. Scopes: <b>read</b> (viewer), <b>operate</b> (plan/apply patches), <b>admin</b> — never more than your own role.</div>
+    <div class="card-header"><h2>{{t "settings.nav.tokens"}}</h2></div>
+    {{if .Data.Tokens}}<table class="table table-compact"><thead><tr><th>{{t "common.name"}}</th><th>{{t "tokens.owner"}}</th><th>{{t "tokens.scope"}}</th><th>{{t "common.created"}}</th><th>{{t "common.expires"}}</th><th>{{t "tokens.lastUsed"}}</th><th></th></tr></thead><tbody>
+    {{range .Data.Tokens}}<tr><td class="font-medium">{{.Name}}</td><td>{{.Owner}}</td><td><span class="badge">{{t (print "tokens.scope." .Scope)}}</span></td><td class="text-xs">{{fmtTime .CreatedAt}}</td>
+      <td class="text-xs">{{if .ExpiresAt.IsZero}}{{t "time.never"}}{{else}}{{fmtTime .ExpiresAt}}{{end}}</td><td class="text-xs">{{if .LastUsed.IsZero}}{{t "time.never"}}{{else}}{{reltime .LastUsed}}{{end}}</td>
+      <td class="text-right"><form method="post" action="/settings/tokens/{{.ID}}/delete" data-confirm="{{t "tokens.confirmRevoke" .Name}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-red-600 hover:underline">{{t "tokens.revoke"}}</button></form></td></tr>{{end}}
+    </tbody></table>{{else}}<div class="empty">{{t "tokens.empty"}}</div>{{end}}
+    <div class="border-t border-zinc-100 px-5 py-4 text-xs text-zinc-500 dark:border-zinc-800">{{t "tokens.cliHelp"}} <code>sentrix login --server {{.Data.Base}} --token sxa_…</code> {{t "tokens.orSend"}} <code>Authorization: Bearer sxa_…</code>. {{t "tokens.scopesLabel"}} <b>{{t "tokens.scope.read"}}</b> ({{t "role.viewer"}}), <b>{{t "tokens.scope.operate"}}</b> ({{t "tokens.operateDesc"}}), <b>{{t "tokens.scope.admin"}}</b> — {{t "tokens.scopesLimit"}}</div>
   </section>
   <form method="post" action="/settings/tokens" class="card space-y-3 p-5">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <h2 class="text-sm font-semibold">New token</h2>
-    <label class="block"><span class="label">Name</span><input name="name" required class="input mt-1" placeholder="ci-pipeline"></label>
-    <label class="block"><span class="label">Scope</span><select name="scope" class="input mt-1"><option value="read">read</option>{{if can .User "operator"}}<option value="operate">operate</option>{{end}}{{if can .User "admin"}}<option value="admin">admin</option>{{end}}</select></label>
-    <label class="block"><span class="label">Expires</span><select name="days" class="input mt-1"><option value="30">30 days</option><option value="90" selected>90 days</option><option value="365">1 year</option><option value="0">never</option></select></label>
-    <button class="btn-primary">Create token</button>
+    <h2 class="text-sm font-semibold">{{t "tokens.new"}}</h2>
+    <label class="block"><span class="label">{{t "common.name"}}</span><input name="name" required class="input mt-1" placeholder="ci-pipeline"></label>
+    <label class="block"><span class="label">{{t "tokens.scope"}}</span><select name="scope" class="input mt-1"><option value="read">{{t "tokens.scope.read"}}</option>{{if can .User "operator"}}<option value="operate">{{t "tokens.scope.operate"}}</option>{{end}}{{if can .User "admin"}}<option value="admin">{{t "tokens.scope.admin"}}</option>{{end}}</select></label>
+    <label class="block"><span class="label">{{t "common.expires"}}</span><select name="days" class="input mt-1"><option value="30">{{t "tokens.days30"}}</option><option value="90" selected>{{t "tokens.days90"}}</option><option value="365">{{t "tokens.year1"}}</option><option value="0">{{t "time.never"}}</option></select></label>
+    <button class="btn-primary">{{t "tokens.create"}}</button>
   </form>
 </div>
 {{end}}

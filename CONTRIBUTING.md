@@ -1,3 +1,5 @@
+[Türkçe](CONTRIBUTING.tr.md) · **English**
+
 # Contributing to Sentrix
 
 Thanks for your interest! Bug reports, docs fixes and pull requests are welcome.
@@ -24,6 +26,7 @@ Linux-only behaviour (collectors, package managers) is covered by fixture tests 
 - Exported identifiers in `internal/vuln` and `internal/patch` need doc comments.
 - Use Conventional Commits (`feat(agent): …`, `fix(server): …`). Record notable design decisions in
   `docs/DECISIONS.md`.
+- UI strings live in the `web/i18n/tr` and `web/i18n/en` catalogs; add every new string to both languages.
 - Security issues: see [SECURITY.md](SECURITY.md) — please report privately.
 
 By contributing you agree that your contributions are licensed under the Apache License 2.0.

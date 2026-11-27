@@ -2,23 +2,23 @@
 {{define "content"}}
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
   <div><h1 class="text-2xl font-semibold tracking-tight">{{t "nav.patches"}}</h1>
-    <p class="text-sm text-zinc-500">Every plan runs a dry run first and needs approval before anything changes.</p></div>
-  {{if can .User "operator"}}<a href="/patches/new" class="btn-primary">New patch plan</a>{{end}}
+    <p class="text-sm text-zinc-500">{{t "plan.list.subtitle"}}</p></div>
+  {{if can .User "operator"}}<a href="/patches/new" class="btn-primary">{{t "plan.new"}}</a>{{end}}
 </div>
 <div class="card overflow-x-auto">
   {{if .Data.Plans}}
   <table class="table">
-    <thead><tr><th>Plan</th><th>Scope</th><th>Status</th><th>Created</th><th>Approved</th></tr></thead>
+    <thead><tr><th>{{t "plan.col.plan"}}</th><th>{{t "plan.col.scope"}}</th><th>{{t "common.status"}}</th><th>{{t "common.created"}}</th><th>{{t "plan.col.approved"}}</th></tr></thead>
     <tbody>{{range .Data.Plans}}
-    <tr><td><a href="/patches/{{.ID}}" class="font-medium hover:underline">{{.Name}}</a>{{if .PolicyID}} <span class="badge badge-muted">automatic</span>{{end}}</td>
-      <td>{{.Scope}}{{if .Packages}} <span class="text-xs text-zinc-500">({{join .Packages ", "}})</span>{{end}}</td>
+    <tr><td><a href="/patches/{{.ID}}" class="font-medium hover:underline">{{.Name}}</a>{{if .PolicyID}} <span class="badge badge-muted">{{t "plan.automatic"}}</span>{{end}}</td>
+      <td>{{t (printf "plan.scope.%s" .Scope)}}{{if .Packages}} <span class="text-xs text-zinc-500">({{join .Packages ", "}})</span>{{end}}</td>
       <td>{{template "planstatus" .Status}}</td>
       <td class="text-sm">{{fmtTime .CreatedAt}}<div class="text-xs text-zinc-500">{{.CreatedBy}}</div></td>
       <td class="text-sm">{{if .ApprovedBy}}{{fmtTime .ApprovedAt}}<div class="text-xs text-zinc-500">{{.ApprovedBy}}</div>{{else}}–{{end}}</td></tr>
     {{end}}</tbody>
   </table>
-  {{else}}<div class="empty">No patch plans yet.{{if can .User "operator"}} <a href="/patches/new" class="text-teal-700 hover:underline dark:text-teal-300">Create one</a>.{{end}}</div>{{end}}
+  {{else}}<div class="empty">{{t "plan.empty"}}{{if can .User "operator"}} <a href="/patches/new" class="text-teal-700 hover:underline dark:text-teal-300">{{t "plan.createOne"}}</a>.{{end}}</div>{{end}}
 </div>
 {{end}}
 
-{{define "planstatus"}}{{if eq . "done"}}<span class="badge badge-online">done</span>{{else if eq . "failed"}}<span class="badge badge-offline">failed</span>{{else if eq . "ready"}}<span class="badge badge-warn">awaiting approval</span>{{else if eq . "cancelled"}}<span class="badge badge-muted">cancelled</span>{{else if eq . "dry_run"}}<span class="badge">dry run…</span>{{else}}<span class="badge">{{.}}</span>{{end}}{{end}}
+{{define "planstatus"}}{{$l := t (printf "plan.state.%s" .)}}{{if eq . "done"}}<span class="badge badge-online">{{$l}}</span>{{else if eq . "failed"}}<span class="badge badge-offline">{{$l}}</span>{{else if eq . "ready"}}<span class="badge badge-warn">{{$l}}</span>{{else if eq . "cancelled"}}<span class="badge badge-muted">{{$l}}</span>{{else}}<span class="badge">{{$l}}</span>{{end}}{{end}}

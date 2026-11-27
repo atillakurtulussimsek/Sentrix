@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Full Turkish translation; Turkish is now the default language (`language: tr` / `SENTRIX_LANGUAGE`, `en` also supported).
+- Per-user UI language: picker in the sidebar, on the sign-in/setup pages and in Account settings (stored per account; "server default" option).
+- Notifications, digests, default rule/plan names and stored patch messages use the server default language.
+- CLIs (`sentrix`, `sentrix-server`, `sentrix-agent`) are localized: `--lang tr|en` > `SENTRIX_LANGUAGE` > config `language` > `tr`.
+- Agent installer `install.sh --lang tr|en`; enrolment one-liners pass the server language.
+- Translatable risk-score explanations; Turkish documentation (`README.md`, `docs/tr/`, `SECURITY.tr.md`, `CONTRIBUTING.tr.md`); English README moved to `README.en.md`.
+
+### Changed
+- Message catalogs split per language and area (`web/i18n/<lang>/*.json`); a parity test enforces identical keys and format verbs.
+
 ## [0.1.0] - 2026-11-27
 
 First public release: monitoring, inventory, vulnerability detection, patch orchestration and alerting

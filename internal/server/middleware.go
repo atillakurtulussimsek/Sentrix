@@ -122,7 +122,11 @@ func (s *Server) csrf(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := s.checkCSRF(r); err != nil {
 			s.log.Warn("csrf rejected", "path", r.URL.Path, "ip", clientIP(r))
-			s.httpError(w, r, http.StatusForbidden, "Invalid or missing CSRF token. Reload the page and try again.")
+			msg := s.t(r, "auth.csrf")
+			if isAPI(r) {
+				msg = s.cat.T("en", "auth.csrf")
+			}
+			s.httpError(w, r, http.StatusForbidden, msg)
 			return
 		}
 		next.ServeHTTP(w, r)

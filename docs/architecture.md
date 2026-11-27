@@ -1,3 +1,5 @@
+[Türkçe](tr/architecture.md) · **English**
+
 # Architecture
 
 ```

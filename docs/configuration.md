@@ -1,3 +1,5 @@
+[Türkçe](tr/configuration.md) · **English**
+
 # Configuration reference
 
 Both binaries read an optional YAML file (`--config FILE`, or `SENTRIX_CONFIG` / `SENTRIX_AGENT_CONFIG`)
@@ -25,7 +27,7 @@ Lists in environment variables are comma separated.
 | `feeds.stale_after` | `SENTRIX_FEEDS_STALE_AFTER` | `72h` | show the "data is stale" banner after this |
 | `feeds.nvd_api_key` | `SENTRIX_NVD_API_KEY` | – | optional NVD key (faster CVSS enrichment) |
 | `feeds.osv_base_url`, `debian_url`, `kev_url`, `epss_url`, `nvd_url` | `SENTRIX_OSV_BASE_URL`, … | official URLs | mirrors / air-gapped setups |
-| `language` | `SENTRIX_LANGUAGE` | `en` | UI language (`en`; `tr` partial) |
+| `language` | `SENTRIX_LANGUAGE` | `tr` | default language: `tr` or `en`. Used for the UI until a user picks their own language (sidebar, sign-in page, *Account* settings), and always for notifications |
 | `log_level` | `SENTRIX_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `dev_insecure_cookies` | `SENTRIX_DEV_INSECURE_COOKIES` | `false` | never in production |
 | – | `SENTRIX_SECRET_KEY` | generated `secret.key` | base64 32-byte key for secrets at rest |
@@ -57,3 +59,12 @@ sentrix-server serve | token create | ca-fingerprint | hosts | findings | stats 
 | `log_level` | `SENTRIX_LOG_LEVEL` | `info` | |
 
 Commands: `sentrix-agent enroll | run | inventory [--refresh] | version`.
+
+## Language
+
+- **UI:** each user picks their language (Turkish or English) from the picker in the sidebar, on the sign-in page
+  or in *Account* settings; the choice is stored on the account. Until then the server default applies.
+- **Server default:** `language: tr` / `SENTRIX_LANGUAGE=tr` (supported: `tr`, `en`; default `tr`).
+  Notifications always use the server default language.
+- **Command-line tools:** follow `SENTRIX_LANGUAGE` (default `tr`).
+- **Agent installer:** `install.sh --lang tr|en`.

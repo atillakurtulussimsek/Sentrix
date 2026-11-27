@@ -25,19 +25,19 @@ func (s *Server) seedDefaultRules(ctx context.Context) error {
 		cfg             notify.RuleConfig
 		forDur          time.Duration
 	}{
-		{"Agent offline", "state", "critical", notify.RuleConfig{Condition: "agent_offline"}, 5 * time.Minute},
-		{"Disk almost full", "threshold", "warning", notify.RuleConfig{Metric: "disk.used_pct", Op: ">", Value: 90}, 5 * time.Minute},
-		{"Inodes almost exhausted", "threshold", "warning", notify.RuleConfig{Metric: "disk.inodes_used_pct", Op: ">", Value: 90}, 5 * time.Minute},
-		{"Failed systemd units", "state", "warning", notify.RuleConfig{Condition: "failed_units"}, 5 * time.Minute},
-		{"Watched service down", "state", "critical", notify.RuleConfig{Condition: "service_down"}, 2 * time.Minute},
-		{"Reboot pending for 7 days", "state", "warning", notify.RuleConfig{Condition: "reboot_pending"}, 7 * 24 * time.Hour},
-		{"New known-exploited vulnerability", "vulnerability", "critical", notify.RuleConfig{OnlyKEV: true}, 0},
-		{"New critical vulnerability", "vulnerability", "critical", notify.RuleConfig{MinSeverity: "critical"}, 0},
-		{"Patch plan result", "patch", "info", notify.RuleConfig{}, 0},
+		{"notify.seed.agentOffline", "state", "critical", notify.RuleConfig{Condition: "agent_offline"}, 5 * time.Minute},
+		{"notify.seed.diskFull", "threshold", "warning", notify.RuleConfig{Metric: "disk.used_pct", Op: ">", Value: 90}, 5 * time.Minute},
+		{"notify.seed.inodes", "threshold", "warning", notify.RuleConfig{Metric: "disk.inodes_used_pct", Op: ">", Value: 90}, 5 * time.Minute},
+		{"notify.seed.failedUnits", "state", "warning", notify.RuleConfig{Condition: "failed_units"}, 5 * time.Minute},
+		{"notify.seed.serviceDown", "state", "critical", notify.RuleConfig{Condition: "service_down"}, 2 * time.Minute},
+		{"notify.seed.reboot", "state", "warning", notify.RuleConfig{Condition: "reboot_pending"}, 7 * 24 * time.Hour},
+		{"notify.seed.kev", "vulnerability", "critical", notify.RuleConfig{OnlyKEV: true}, 0},
+		{"notify.seed.critical", "vulnerability", "critical", notify.RuleConfig{MinSeverity: "critical"}, 0},
+		{"notify.seed.patch", "patch", "info", notify.RuleConfig{}, 0},
 	}
 	for _, d := range defs {
 		b, _ := json.Marshal(d.cfg)
-		if _, err := s.db.SaveRule(ctx, store.Rule{Name: d.name, Kind: d.kind, Config: string(b), Severity: d.sev, For: d.forDur, Cooldown: 6 * time.Hour, Enabled: true}); err != nil {
+		if _, err := s.db.SaveRule(ctx, store.Rule{Name: s.tDefault(d.name), Kind: d.kind, Config: string(b), Severity: d.sev, For: d.forDur, Cooldown: 6 * time.Hour, Enabled: true}); err != nil {
 			return err
 		}
 	}
@@ -131,26 +131,26 @@ func (s *Server) observe(ctx context.Context, r store.Rule, hosts []store.Host, 
 					continue
 				}
 				out = append(out, notify.Observation{Key: key + ":" + labels, HostID: h.ID, Host: h.Hostname, Subject: labels, Value: v,
-					Message: fmt.Sprintf("%s is %.1f (%s %g)%s", cfg.Metric, v, cfg.Op, cfg.Value, braces(labels))})
+					Message: s.tDefault("notify.obs.threshold", cfg.Metric, v, cfg.Op, cfg.Value, braces(labels))})
 			}
 		case "state":
 			st := parseState(h.StateJSON)
 			switch cfg.Condition {
 			case "agent_offline":
 				if !h.Online(now, s.cfg.OfflineAfter) && !h.LastSeen.IsZero() {
-					out = append(out, notify.Observation{Key: key, HostID: h.ID, Host: h.Hostname, Message: "agent offline since " + h.LastSeen.Format(time.RFC3339)})
+					out = append(out, notify.Observation{Key: key, HostID: h.ID, Host: h.Hostname, Message: s.tDefault("notify.obs.agentOffline", h.LastSeen.Format(time.RFC3339))})
 				}
 			case "failed_units":
 				if h.Online(now, s.cfg.OfflineAfter) && len(st.FailedUnits) > 0 {
-					out = append(out, notify.Observation{Key: key, HostID: h.ID, Host: h.Hostname, Value: float64(len(st.FailedUnits)), Message: "failed units: " + strings.Join(st.FailedUnits, ", ")})
+					out = append(out, notify.Observation{Key: key, HostID: h.ID, Host: h.Hostname, Value: float64(len(st.FailedUnits)), Message: s.tDefault("notify.obs.failedUnits", strings.Join(st.FailedUnits, ", "))})
 				}
 			case "service_down":
 				if down := s.downServices(ctx, h.ID); h.Online(now, s.cfg.OfflineAfter) && len(down) > 0 {
-					out = append(out, notify.Observation{Key: key, HostID: h.ID, Host: h.Hostname, Message: "watched services down: " + strings.Join(down, ", ")})
+					out = append(out, notify.Observation{Key: key, HostID: h.ID, Host: h.Hostname, Message: s.tDefault("notify.obs.serviceDown", strings.Join(down, ", "))})
 				}
 			case "reboot_pending":
 				if st.Reboot.Required {
-					out = append(out, notify.Observation{Key: key, HostID: h.ID, Host: h.Hostname, Message: "reboot required: " + strings.Join(st.Reboot.Reasons, "; ")})
+					out = append(out, notify.Observation{Key: key, HostID: h.ID, Host: h.Hostname, Message: s.tDefault("notify.obs.rebootRequired", strings.Join(st.Reboot.Reasons, "; "))})
 				}
 			}
 		}
@@ -230,12 +230,12 @@ func (s *Server) hostname(ctx context.Context, id string) string {
 // dispatch sends an alert notification to the rule's channels.
 func (s *Server) dispatch(ctx context.Context, r store.Rule, a store.Alert, event string) {
 	host := s.hostname(ctx, a.HostID)
-	title := fmt.Sprintf("[%s] %s", strings.ToUpper(a.Severity), r.Name)
+	title := s.tDefault("notify.title.firing", s.sevTag(a.Severity), r.Name)
 	if event == "resolved" {
-		title = "[RESOLVED] " + r.Name
+		title = s.tDefault("notify.title.resolved", r.Name)
 	}
 	if host != "" {
-		title += " on " + host
+		title = s.tDefault("notify.title.onHost", title, host)
 	}
 	link := strings.TrimRight(s.cfg.BaseURL, "/") + "/alerts"
 	if a.HostID != "" {
@@ -243,10 +243,33 @@ func (s *Server) dispatch(ctx context.Context, r store.Rule, a store.Alert, even
 	}
 	body := a.Message
 	if event == "resolved" {
-		body = "Condition cleared. Last observed: " + a.Message
+		body = s.tDefault("notify.body.resolved", a.Message)
 	}
 	m := notify.Message{Event: event, Severity: a.Severity, Title: title, Body: body, Host: host, HostID: a.HostID, AlertID: a.ID, Rule: r.Name, Value: a.Value, URL: link, Time: s.now()}
 	s.sendToChannels(ctx, r.Channels, m, a.ID)
+}
+
+// sevTag is the upper-case severity tag of alert titles in the server language.
+func (s *Server) sevTag(sev string) string {
+	if k := "notify.tag." + sev; s.cat.Has(s.cfg.Language, k) {
+		return s.tDefault(k)
+	}
+	return strings.ToUpper(sev)
+}
+
+// sevLabel is a CVE severity label in the server language.
+func (s *Server) sevLabel(sev string) string {
+	if k := "severity." + sev; s.cat.Has(s.cfg.Language, k) {
+		return s.tDefault(k)
+	}
+	return sev
+}
+
+// testNotification is the message sent by a channel's "send test" action,
+// rendered in the server default language.
+func (s *Server) testNotification(c store.Channel) notify.Message {
+	return notify.Message{Event: "test", Severity: "info", Title: s.tDefault("notify.test.title"), Body: s.tDefault("notify.test.body", c.Kind, c.Name),
+		URL: strings.TrimRight(s.cfg.BaseURL, "/") + "/settings/channels", Time: s.now()}
 }
 
 // sendToChannels delivers m to the given channel IDs (all enabled when empty).
@@ -368,13 +391,13 @@ func (s *Server) onFindingsEvent(ctx context.Context, ev Event) {
 			if _, exists := open[key]; exists {
 				continue
 			}
-			fix := "no fix available yet"
+			fix := s.tDefault("notify.vuln.noFix")
 			if f.Fixed != "" {
-				fix = "fixed in " + f.Fixed
+				fix = s.tDefault("notify.vuln.fixedIn", f.Fixed)
 			}
-			msg := fmt.Sprintf("%s in %s %s (%s) — risk %.0f", f.VulnID, f.Package, f.Installed, fix, f.Risk)
+			msg := s.tDefault("notify.vuln.finding", f.VulnID, f.Package, f.Installed, fix, f.Risk)
 			if m := metas[f.VulnID]; m.KEV {
-				msg += " — listed in CISA KEV"
+				msg += s.tDefault("notify.vuln.kev")
 			}
 			_ = s.applyTransition(ctx, r, store.Alert{}, true, notify.Observation{Key: key, HostID: ev.HostID, Subject: f.VulnID, Value: f.Risk, Message: msg}, now)
 		}
@@ -407,7 +430,8 @@ func (s *Server) onPlanEvent(ctx context.Context, ev Event) {
 		if data["status"] == "failed" {
 			sev = "critical"
 		}
-		body := "Plan " + data["name"] + " finished: " + data["status"]
+		status := s.tDefault("notify.patch.status." + data["status"])
+		body := s.tDefault("notify.patch.body", data["name"], status)
 		if data["error"] != "" {
 			body += " — " + data["error"]
 		}
@@ -416,7 +440,7 @@ func (s *Server) onPlanEvent(ctx context.Context, ev Event) {
 		if err != nil {
 			continue
 		}
-		m := notify.Message{Event: "patch", Severity: sev, Title: "Patch plan " + data["status"] + ": " + data["name"], Body: body,
+		m := notify.Message{Event: "patch", Severity: sev, Title: s.tDefault("notify.patch.title", status, data["name"]), Body: body,
 			URL: strings.TrimRight(s.cfg.BaseURL, "/") + "/patches/" + data["id"], AlertID: a.ID, Rule: r.Name, Time: s.now()}
 		s.sendToChannels(ctx, r.Channels, m, a.ID)
 	}
@@ -458,34 +482,35 @@ func (s *Server) BuildDigest(ctx context.Context) (notify.Message, error) {
 	top, _ := s.db.FleetVulns(ctx, store.VulnFilter{Limit: 5})
 	firing, _ := s.db.ListAlerts(ctx, "firing", 20)
 	var b strings.Builder
-	fmt.Fprintf(&b, "Fleet: %d hosts, %d offline, %d firing alerts.\n", len(hosts), len(offline), len(firing))
+	b.WriteString(s.tDefault("notify.digest.fleet", len(hosts), len(offline), len(firing)) + "\n")
 	if len(offline) > 0 {
-		fmt.Fprintf(&b, "\nOffline: %s\n", strings.Join(offline, ", "))
+		b.WriteString("\n" + s.tDefault("notify.digest.offline", strings.Join(offline, ", ")) + "\n")
 	}
 	if len(top) > 0 {
-		b.WriteString("\nTop risks:\n")
+		b.WriteString("\n" + s.tDefault("notify.digest.topRisks") + "\n")
 		for _, v := range top {
 			kev := ""
 			if v.KEV {
 				kev = " KEV"
 			}
-			fmt.Fprintf(&b, "  • %s (%s%s, risk %.0f) — %d host(s): %s\n", v.ID, v.EffSeverity, kev, v.MaxRisk, v.Hosts, v.Packages)
+			b.WriteString("  • " + s.tDefault("notify.digest.riskLine", v.ID, s.sevLabel(v.EffSeverity), kev, v.MaxRisk, v.Hosts, v.Packages) + "\n")
 		}
 	}
 	if len(pending) > 0 {
-		b.WriteString("\nPending updates:\n")
+		b.WriteString("\n" + s.tDefault("notify.digest.pending") + "\n")
 		for i, p := range pending {
 			if i == 10 {
-				fmt.Fprintf(&b, "  … and %d more hosts\n", len(pending)-10)
+				b.WriteString("  " + s.tDefault("notify.digest.more", len(pending)-10) + "\n")
 				break
 			}
-			fmt.Fprintf(&b, "  • %s: %d (%d security)\n", p.name, p.all, p.sec)
+			b.WriteString("  • " + s.tDefault("notify.digest.pendingLine", p.name, p.all, p.sec) + "\n")
 		}
 	}
 	if len(reboots) > 0 {
-		fmt.Fprintf(&b, "\nReboot pending: %s\n", strings.Join(reboots, ", "))
+		b.WriteString("\n" + s.tDefault("notify.digest.reboot", strings.Join(reboots, ", ")) + "\n")
 	}
-	return notify.Message{Event: "digest", Severity: "info", Title: "Sentrix digest — " + now.Format("Mon 2 Jan 2006"), Body: b.String(),
+	title := s.tDefault("notify.digest.title", now.Format(s.tDefault("notify.digest.dateLayout")))
+	return notify.Message{Event: "digest", Severity: "info", Title: title, Body: b.String(),
 		URL: strings.TrimRight(s.cfg.BaseURL, "/") + "/", Time: now}, nil
 }
 

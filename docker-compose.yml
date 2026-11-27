@@ -15,6 +15,7 @@ services:
       SENTRIX_BASE_URL: ${SENTRIX_BASE_URL:-http://${SENTRIX_HOST:-localhost}:8080}
       SENTRIX_GATEWAY_URL: https://${SENTRIX_HOST:-localhost}:8443
       SENTRIX_GATEWAY_HOSTS: ${SENTRIX_HOST:-localhost},localhost,127.0.0.1
+      SENTRIX_LANGUAGE: tr   # default UI/notification/CLI language; "en" is also supported
       # SENTRIX_NVD_API_KEY: ""   # optional: faster CVSS enrichment
     volumes:
       - sentrix-data:/data

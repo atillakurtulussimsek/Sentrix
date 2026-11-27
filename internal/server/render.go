@@ -13,6 +13,7 @@ import (
 	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
 	"github.com/atillakurtulussimsek/Sentrix/internal/version"
+	"github.com/atillakurtulussimsek/Sentrix/internal/vuln"
 	"github.com/atillakurtulussimsek/Sentrix/web"
 )
 
@@ -60,6 +61,31 @@ func parsePages(cat *i18n.Catalog, lang string) (map[string]*template.Template, 
 	funcs := template.FuncMap{
 		"t":    func(key string, args ...any) string { return cat.T(lang, key, args...) },
 		"lang": func() string { return lang },
+		// riskdetail renders a risk component in lang (falls back to the stored English text).
+		"riskdetail": func(c vuln.RiskComponent) string {
+			if len(c.Msgs) == 0 {
+				return c.Detail
+			}
+			parts := make([]string, 0, len(c.Msgs))
+			for _, m := range c.Msgs {
+				args := make([]any, len(m.Args))
+				for i, a := range m.Args {
+					if strings.HasPrefix(a, "severity.") {
+						a = cat.T(lang, a)
+					}
+					args[i] = a
+				}
+				parts = append(parts, cat.T(lang, m.Key, args...))
+			}
+			return strings.Join(parts, "; ")
+		},
+		// exposed renders the matcher's "<proc> listening on <addr>" evidence in lang.
+		"exposed": func(ev string) string {
+			if proc, addr, ok := strings.Cut(ev, " listening on "); ok {
+				return cat.T(lang, "risk.listening", proc, addr)
+			}
+			return ev
+		},
 		"dict": func(kv ...any) map[string]any {
 			m := map[string]any{}
 			for i := 0; i+1 < len(kv); i += 2 {

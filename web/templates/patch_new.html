@@ -1,40 +1,40 @@
-{{define "title"}}New patch plan{{end}}
+{{define "title"}}{{t "plan.new"}}{{end}}
 {{define "content"}}
 <a href="/patches" class="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">← {{t "nav.patches"}}</a>
-<h1 class="mt-2 mb-5 text-2xl font-semibold tracking-tight">New patch plan</h1>
+<h1 class="mt-2 mb-5 text-2xl font-semibold tracking-tight">{{t "plan.new"}}</h1>
 <form method="post" action="/patches" class="grid gap-6 lg:grid-cols-3">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <section class="card lg:col-span-2">
-    <div class="card-header"><h2>1 · Hosts</h2>
-      {{if .Data.Groups}}<label class="flex items-center gap-2 text-sm">or whole group <select name="group" class="input input-sm w-auto"><option value="">—</option>{{range .Data.Groups}}<option>{{.}}</option>{{end}}</select></label>{{end}}</div>
+    <div class="card-header"><h2>{{t "plan.form.hosts"}}</h2>
+      {{if .Data.Groups}}<label class="flex items-center gap-2 text-sm">{{t "plan.form.orGroup"}} <select name="group" class="input input-sm w-auto"><option value="">—</option>{{range .Data.Groups}}<option>{{.}}</option>{{end}}</select></label>{{end}}</div>
     <div class="max-h-96 overflow-y-auto">
-    <table class="table table-compact"><thead><tr><th></th><th>Host</th><th>Status</th><th class="text-right">Updates</th><th class="text-right">Risk</th></tr></thead><tbody>
+    <table class="table table-compact"><thead><tr><th></th><th>{{t "common.host"}}</th><th>{{t "common.status"}}</th><th class="text-right">{{t "plan.col.updates"}}</th><th class="text-right">{{t "common.risk"}}</th></tr></thead><tbody>
       {{range .Data.Hosts}}<tr>
         <td><input type="checkbox" name="hosts" value="{{.ID}}" {{if index $.Data.Selected .ID}}checked{{end}} {{if eq .Status "revoked"}}disabled{{end}}></td>
         <td class="font-medium">{{.Hostname}} <span class="text-xs text-zinc-500">{{.Group}}</span></td>
-        <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
-        <td class="text-right tabular-nums">{{.Updates}}{{if .SecUpdates}} <span class="text-red-600">({{.SecUpdates}} sec)</span>{{end}}</td>
+        <td><span class="badge badge-{{.Status}}">{{t (printf "status.%s" .Status)}}</span></td>
+        <td class="text-right tabular-nums">{{.Updates}}{{if .SecUpdates}} <span class="text-red-600">{{t "plan.form.secUpdates" .SecUpdates}}</span>{{end}}</td>
         <td class="text-right">{{if .Risk}}<span class="risk risk-{{riskclass .Risk}}">{{printf "%.0f" .Risk}}</span>{{end}}</td></tr>{{end}}
     </tbody></table></div>
   </section>
   <section class="card space-y-4 p-5">
-    <h2 class="text-sm font-semibold">2 · Scope &amp; safety</h2>
-    <label class="block"><span class="label">Name (optional)</span><input name="name" class="input mt-1"></label>
-    <fieldset class="space-y-1.5 text-sm"><legend class="label mb-1">Scope</legend>
-      <label class="flex items-center gap-2"><input type="radio" name="scope" value="security" {{if eq .Data.Scope "security"}}checked{{end}}> Security updates only</label>
-      <label class="flex items-center gap-2"><input type="radio" name="scope" value="packages" {{if eq .Data.Scope "packages"}}checked{{end}}> Specific packages</label>
-      <label class="flex items-center gap-2"><input type="radio" name="scope" value="all" {{if eq .Data.Scope "all"}}checked{{end}}> All updates</label>
+    <h2 class="text-sm font-semibold">{{t "plan.form.scopeSafety"}}</h2>
+    <label class="block"><span class="label">{{t "plan.form.nameOptional"}}</span><input name="name" class="input mt-1"></label>
+    <fieldset class="space-y-1.5 text-sm"><legend class="label mb-1">{{t "plan.col.scope"}}</legend>
+      <label class="flex items-center gap-2"><input type="radio" name="scope" value="security" {{if eq .Data.Scope "security"}}checked{{end}}> {{t "plan.scopeOption.security"}}</label>
+      <label class="flex items-center gap-2"><input type="radio" name="scope" value="packages" {{if eq .Data.Scope "packages"}}checked{{end}}> {{t "plan.scopeOption.packages"}}</label>
+      <label class="flex items-center gap-2"><input type="radio" name="scope" value="all" {{if eq .Data.Scope "all"}}checked{{end}}> {{t "plan.scopeOption.all"}}</label>
     </fieldset>
-    <label class="block"><span class="label">Packages (for “specific packages”)</span><input name="packages" class="input mt-1 font-mono" placeholder="openssl libssl3"></label>
-    <label class="block"><span class="label">Reboot</span><select name="reboot" class="input mt-1"><option value="never">Never (report only)</option><option value="if_required">If required</option><option value="always">Always</option></select></label>
+    <label class="block"><span class="label">{{t "plan.form.packages"}}</span><input name="packages" class="input mt-1 font-mono" placeholder="openssl libssl3"></label>
+    <label class="block"><span class="label">{{t "plan.form.reboot"}}</span><select name="reboot" class="input mt-1"><option value="never">{{t "plan.rebootOption.never"}}</option><option value="if_required">{{t "plan.rebootOption.if_required"}}</option><option value="always">{{t "plan.rebootOption.always"}}</option></select></label>
     <div class="grid grid-cols-2 gap-3">
-      <label class="block"><span class="label">Canary hosts</span><input name="canary" type="number" min="0" value="1" class="input mt-1"></label>
-      <label class="block"><span class="label">Max parallel</span><input name="max_parallel" type="number" min="1" value="1" class="input mt-1"></label>
+      <label class="block"><span class="label">{{t "plan.form.canary"}}</span><input name="canary" type="number" min="0" value="1" class="input mt-1"></label>
+      <label class="block"><span class="label">{{t "plan.form.maxParallel"}}</span><input name="max_parallel" type="number" min="1" value="1" class="input mt-1"></label>
     </div>
-    <label class="block"><span class="label">Pre-patch snapshot</span><select name="snapshot_hook" class="input mt-1"><option value="">None</option>{{range .Data.Hooks}}<option value="{{.ID}}">{{.Name}} ({{.Kind}})</option>{{end}}</select></label>
-    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="snapshot_required" value="1" checked> Abort a host if its snapshot fails</label>
-    <button class="btn-primary w-full">Create plan &amp; start dry run</button>
-    <p class="text-xs text-zinc-500">Nothing is changed until you review the dry run and approve the plan.</p>
+    <label class="block"><span class="label">{{t "plan.form.snapshot"}}</span><select name="snapshot_hook" class="input mt-1"><option value="">{{t "common.none"}}</option>{{range .Data.Hooks}}<option value="{{.ID}}">{{.Name}} ({{.Kind}})</option>{{end}}</select></label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="snapshot_required" value="1" checked> {{t "plan.form.snapshotRequired"}}</label>
+    <button class="btn-primary w-full">{{t "plan.form.submit"}}</button>
+    <p class="text-xs text-zinc-500">{{t "plan.form.note"}}</p>
   </section>
 </form>
 {{end}}

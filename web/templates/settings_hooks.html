@@ -1,41 +1,40 @@
-{{define "title"}}Snapshot hooks{{end}}
+{{define "title"}}{{t "settings.nav.hooks"}}{{end}}
 {{define "content"}}
 {{template "settingsnav" .}}
 <div class="grid gap-6 lg:grid-cols-3">
   <section class="card overflow-x-auto lg:col-span-2">
-    <div class="card-header"><h2>Pre-patch hooks</h2></div>
-    {{if .Data.Hooks}}<table class="table table-compact"><thead><tr><th>Name</th><th>Type</th><th>Target</th><th></th></tr></thead><tbody>
-    {{range .Data.Hooks}}<tr><td class="font-medium">{{.Name}}</td><td><span class="badge">{{.Kind}}</span></td><td class="font-mono text-xs text-zinc-500">{{.Target}}</td>
-      <td class="whitespace-nowrap text-right"><form method="post" action="/settings/hooks/{{.ID}}/test" class="inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-teal-700 hover:underline dark:text-teal-300">test connection</button></form>
-      <form method="post" action="/settings/hooks/{{.ID}}/delete" class="ml-2 inline" data-confirm="Delete hook {{.Name}}?"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-red-600 hover:underline">delete</button></form></td></tr>{{end}}
-    </tbody></table>{{else}}<div class="empty">No hooks. Add a Proxmox VE connection to snapshot VMs before patching.</div>{{end}}
-    <div class="border-t border-zinc-100 px-5 py-4 text-xs leading-relaxed text-zinc-500 dark:border-zinc-800">
-      Proxmox: create an API token (Datacenter → Permissions → API Tokens) with the <code>VM.Snapshot</code> privilege on the VMs, then set each host's node and VM ID
-      (<code>105</code> for a VM, <code>lxc/105</code> for a container) in its “Patches &amp; actions” tab. Generic webhook: Sentrix POSTs
-      <code>{"event":"pre_patch","target":{…}}</code> (HMAC-signed with <code>X-Sentrix-Signature</code>); any 2xx answer means the snapshot succeeded.
+    <div class="card-header"><h2>{{t "hooks.heading"}}</h2></div>
+    {{if .Data.Hooks}}<table class="table table-compact"><thead><tr><th>{{t "common.name"}}</th><th>{{t "common.type"}}</th><th>{{t "hooks.target"}}</th><th></th></tr></thead><tbody>
+    {{range .Data.Hooks}}<tr><td class="font-medium">{{.Name}}</td><td><span class="badge">{{t (print "hooks.kind." .Kind)}}</span></td><td class="font-mono text-xs text-zinc-500">{{.Target}}</td>
+      <td class="whitespace-nowrap text-right"><form method="post" action="/settings/hooks/{{.ID}}/test" class="inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-teal-700 hover:underline dark:text-teal-300">{{t "hooks.testConnection"}}</button></form>
+      <form method="post" action="/settings/hooks/{{.ID}}/delete" class="ml-2 inline" data-confirm="{{t "hooks.confirmDelete" .Name}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-red-600 hover:underline">{{t "common.delete"}}</button></form></td></tr>{{end}}
+    </tbody></table>{{else}}<div class="empty">{{t "hooks.empty"}}</div>{{end}}
+    <div class="space-y-2 border-t border-zinc-100 px-5 py-4 text-xs leading-relaxed text-zinc-500 dark:border-zinc-800">
+      <p>{{t "hooks.helpProxmox"}}</p>
+      <p>{{t "hooks.helpWebhook"}} <code>{"event":"pre_patch","target":{…}}</code></p>
     </div>
   </section>
   <div class="space-y-6">
     <form method="post" action="/settings/hooks" class="card space-y-3 p-5">
       <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="kind" value="proxmox">
-      <h2 class="text-sm font-semibold">Add Proxmox VE</h2>
-      <label class="block"><span class="label">Name</span><input name="name" required class="input mt-1" placeholder="pve-cluster"></label>
-      <label class="block"><span class="label">API URL</span><input name="url" required class="input mt-1 font-mono" placeholder="https://pve.example.com:8006"></label>
-      <label class="block"><span class="label">Token ID</span><input name="token_id" required class="input mt-1 font-mono" placeholder="sentrix@pve!patch"></label>
-      <label class="block"><span class="label">Token secret</span><input name="token_secret" type="password" required autocomplete="off" class="input mt-1"></label>
-      <label class="block"><span class="label">Default node (optional)</span><input name="default_node" class="input mt-1"></label>
-      <label class="block"><span class="label">Certificate SHA-256 fingerprint (recommended for self-signed)</span><input name="ca_fingerprint" class="input mt-1 font-mono"></label>
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="insecure" value="1"> skip TLS verification (not recommended)</label>
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="vmstate" value="1"> include RAM state (QEMU)</label>
-      <button class="btn-primary">Save</button>
+      <h2 class="text-sm font-semibold">{{t "hooks.addProxmox"}}</h2>
+      <label class="block"><span class="label">{{t "common.name"}}</span><input name="name" required class="input mt-1" placeholder="pve-cluster"></label>
+      <label class="block"><span class="label">{{t "hooks.apiUrl"}}</span><input name="url" required class="input mt-1 font-mono" placeholder="https://pve.example.com:8006"></label>
+      <label class="block"><span class="label">{{t "hooks.tokenId"}}</span><input name="token_id" required class="input mt-1 font-mono" placeholder="sentrix@pve!patch"></label>
+      <label class="block"><span class="label">{{t "hooks.tokenSecret"}}</span><input name="token_secret" type="password" required autocomplete="off" class="input mt-1"></label>
+      <label class="block"><span class="label">{{t "hooks.defaultNode"}}</span><input name="default_node" class="input mt-1"></label>
+      <label class="block"><span class="label">{{t "hooks.caFingerprint"}}</span><input name="ca_fingerprint" class="input mt-1 font-mono"></label>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="insecure" value="1"> {{t "hooks.insecure"}}</label>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="vmstate" value="1"> {{t "hooks.vmstate"}}</label>
+      <button class="btn-primary">{{t "common.save"}}</button>
     </form>
     <form method="post" action="/settings/hooks" class="card space-y-3 p-5">
       <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="kind" value="webhook">
-      <h2 class="text-sm font-semibold">Add generic webhook</h2>
-      <label class="block"><span class="label">Name</span><input name="name" required class="input mt-1"></label>
-      <label class="block"><span class="label">URL</span><input name="url" required class="input mt-1 font-mono"></label>
-      <label class="block"><span class="label">HMAC secret (optional)</span><input name="secret" type="password" autocomplete="off" class="input mt-1"></label>
-      <button class="btn-secondary">Save</button>
+      <h2 class="text-sm font-semibold">{{t "hooks.addWebhook"}}</h2>
+      <label class="block"><span class="label">{{t "common.name"}}</span><input name="name" required class="input mt-1"></label>
+      <label class="block"><span class="label">{{t "hooks.url"}}</span><input name="url" required class="input mt-1 font-mono"></label>
+      <label class="block"><span class="label">{{t "hooks.hmacSecret"}}</span><input name="secret" type="password" autocomplete="off" class="input mt-1"></label>
+      <button class="btn-secondary">{{t "common.save"}}</button>
     </form>
   </div>
 </div>

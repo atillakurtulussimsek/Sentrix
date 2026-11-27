@@ -14,7 +14,7 @@ func (s *Server) handleSetupForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	s.renderPage(w, r, 200, "setup", "Welcome", map[string]any{})
+	s.renderPage(w, r, 200, "setup", s.t(r, "setup.title"), map[string]any{})
 }
 
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
@@ -28,41 +28,45 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	user := strings.TrimSpace(r.PostFormValue("username"))
 	pw := r.PostFormValue("password")
 	fail := func(msg string) {
-		s.renderPage(w, r, 400, "setup", "Welcome", map[string]any{"Error": msg, "Username": user})
+		s.renderPage(w, r, 400, "setup", s.t(r, "setup.title"), map[string]any{"Error": msg, "Username": user})
 	}
 	switch {
 	case !validUsername(user):
-		fail("Username must be 3–64 characters: letters, digits, . _ -")
+		fail(s.t(r, "setup.err.username"))
 		return
 	case pw != r.PostFormValue("password2"):
-		fail("Passwords do not match.")
+		fail(s.t(r, "setup.err.mismatch"))
 		return
 	case r.PostFormValue("accept") != "1":
-		fail("You must accept the disclaimer to continue.")
+		fail(s.t(r, "setup.err.accept"))
 		return
 	}
 	if err := auth.ValidatePassword(pw); err != nil {
-		fail(err.Error())
+		if len([]rune(pw)) < auth.MinPasswordLength {
+			fail(s.t(r, "auth.passwordTooShort", auth.MinPasswordLength))
+		} else {
+			fail(s.t(r, "auth.passwordTooLong"))
+		}
 		return
 	}
 	hash, err := auth.HashPassword(pw)
 	if err != nil {
-		fail("internal error")
+		fail(s.t(r, "error.internal"))
 		return
 	}
 	u, err := s.db.CreateUser(ctx, user, hash, store.RoleAdmin)
 	if err != nil {
-		fail("Could not create user.")
+		fail(s.t(r, "setup.err.create"))
 		return
 	}
 	_ = s.db.SetSetting(ctx, "disclaimer_accepted_at", time.Now().UTC().Format(time.RFC3339)+" by "+user)
 	s.setupDone.Store(true)
 	s.audit(ctx, "user:"+user, "setup.complete", u.ID, "first admin created, disclaimer accepted")
 	if err := s.startSession(ctx, w, r, u, false); err != nil {
-		fail("internal error")
+		fail(s.t(r, "error.internal"))
 		return
 	}
-	s.setFlash(w, "ok", "Welcome! Create an enrolment token to add your first server.")
+	s.setFlash(w, "ok", s.t(r, "setup.welcome"))
 	http.Redirect(w, r, "/settings/enrollment", http.StatusSeeOther)
 }
 

@@ -246,28 +246,28 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			online++
 		case "offline":
 			offline++
-			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID, "Agent offline", relTime(s.cat, s.lang(r), h.LastSeen)})
+			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID, s.t(r, "dash.att.offline"), relTime(s.cat, s.lang(r), h.LastSeen)})
 		}
 		updates += h.Updates
 		crit += h.Critical
 		kev += h.KEV
 		if h.RebootRequired {
 			reboots++
-			att = append(att, attentionItem{"warn", h.Hostname, "/hosts/" + h.ID, "Reboot required", ""})
+			att = append(att, attentionItem{"warn", h.Hostname, "/hosts/" + h.ID, s.t(r, "dash.att.reboot"), ""})
 		}
 		if h.Disk >= 90 {
-			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID, "Disk " + pctStr(h.Disk) + " full", ""})
+			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID, s.t(r, "dash.att.disk", pctStr(h.Disk)), ""})
 		}
 		for _, u := range h.FailedUnits {
-			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID, "Failed unit " + u, ""})
+			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID, s.t(r, "dash.att.failedUnit", u), ""})
 		}
 		if h.KEV > 0 {
-			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID + "/vulns?kev=1", pluralize(h.KEV, "known exploited vulnerability", "known exploited vulnerabilities"), ""})
+			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID + "/vulns?kev=1", s.plural(r, h.KEV, "dash.att.kev"), ""})
 		} else if h.Critical > 0 {
-			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID + "/vulns", pluralize(h.Critical, "critical vulnerability", "critical vulnerabilities"), ""})
+			att = append(att, attentionItem{"bad", h.Hostname, "/hosts/" + h.ID + "/vulns", s.plural(r, h.Critical, "dash.att.critical"), ""})
 		}
 		if h.SecUpdates > 0 {
-			att = append(att, attentionItem{"warn", h.Hostname, "/hosts/" + h.ID + "/updates", pluralize(h.SecUpdates, "security update pending", "security updates pending"), ""})
+			att = append(att, attentionItem{"warn", h.Hostname, "/hosts/" + h.ID + "/updates", s.plural(r, h.SecUpdates, "dash.att.secUpdates"), ""})
 		}
 	}
 	risk := append([]*hostSummary(nil), sums...)
@@ -286,11 +286,12 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	s.renderPage(w, r, 200, "dashboard", s.t(r, "nav.dashboard"), d)
 }
 
-func pluralize(n int, one, many string) string {
+// plural translates prefix+".one" for n == 1, otherwise prefix+".many" with n.
+func (s *Server) plural(r *http.Request, n int, prefix string) string {
 	if n == 1 {
-		return "1 " + one
+		return s.t(r, prefix+".one")
 	}
-	return itoa(n) + " " + many
+	return s.t(r, prefix+".many", n)
 }
 
 // ---- hosts ----
@@ -446,7 +447,7 @@ func (s *Server) handleHostRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.auditReq(r, "host.revoke", id, "")
-	s.setFlash(w, "ok", "Agent certificate revoked. The agent can no longer connect.")
+	s.setFlash(w, "ok", s.t(r, "host.revoked"))
 	http.Redirect(w, r, "/hosts/"+url.PathEscape(id), http.StatusSeeOther) //nolint:gosec // local path
 }
 
@@ -457,7 +458,7 @@ func (s *Server) handleHostDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.auditReq(r, "host.delete", id, "")
-	s.setFlash(w, "ok", "Host deleted.")
+	s.setFlash(w, "ok", s.t(r, "host.deleted"))
 	http.Redirect(w, r, "/hosts", http.StatusSeeOther)
 }
 

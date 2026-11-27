@@ -1,3 +1,5 @@
+[Türkçe](tr/patch-policies.md) · **English**
+
 # Patch plans & policies
 
 ## Manual plans (default)

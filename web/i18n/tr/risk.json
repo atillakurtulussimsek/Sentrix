@@ -1,0 +1,10 @@
+{
+  "risk.cvss": "CVSS %s (%s)",
+  "risk.noCvss": "önem %s (CVSS puanı yok)",
+  "risk.distroLow": "dağıtım bunu %s olarak derecelendiriyor",
+  "risk.epss": "EPSS %%%s (yüzdelik %s)",
+  "risk.kev": "CISA Bilinen İstismar Edilen Zafiyetler (KEV) listesinde",
+  "risk.exposed": "servis ağa açık",
+  "risk.noFix": "henüz düzeltilmiş paket yok",
+  "risk.listening": "%s, %s adresinde dinliyor"
+}

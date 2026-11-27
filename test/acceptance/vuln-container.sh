@@ -4,6 +4,7 @@
 # (oracle: dpkg --compare-versions inside the container) plus open ones; after upgrading
 # openssl those CVEs must disappear. Needs Docker, jq, network.
 set -euo pipefail
+export SENTRIX_LANGUAGE=en   # this script parses CLI output (token create, patch plan)
 cd "$(dirname "$0")/../.."
 ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
 BIN="$PWD/bin/linux_$ARCH"

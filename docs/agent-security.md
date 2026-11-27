@@ -1,3 +1,5 @@
+[Türkçe](tr/agent-security.md) · **English**
+
 # Agent actions & security model
 
 ## The core property: no remote shell

@@ -1,0 +1,21 @@
+{
+  "orch.planCancelled": "plan iptal edildi",
+  "orch.dryTimeout": "deneme çalıştırması zaman aşımına uğradı (sunucu çevrimdışı olabilir)",
+  "orch.notStartedEarlierFailed": "başlatılmadı: önceki bir sunucu başarısız oldu",
+  "orch.notStartedWindowClosed": "başlatılmadı: bakım penceresi kapandı",
+  "orch.hostsFailed": "%d sunucu başarısız oldu; dağıtım durduruldu",
+  "orch.windowClosedEarly": "bakım penceresi tüm sunuculara yama uygulanmadan kapandı",
+  "orch.snapshotTimeout": "anlık görüntü adımı zaman aşımına uğradı",
+  "orch.queueReboot": "yeniden başlatma kuyruğa alınamadı: %s",
+  "orch.patchFailed": "yama başarısız: %s",
+  "orch.patchTimeout": "yama komutu zaman aşımına uğradı",
+  "orch.noComeback": "sunucu yeniden başlatmadan sonra çevrimiçi olmadı",
+  "orch.verifyTimeout": "doğrulama zaman aşımına uğradı (ajan çevrimdışı ya da yama sonrası envanter yok)",
+  "orch.servicesDown": "izlenen servisler yamadan sonra etkin değil: %s",
+  "orch.snapshotRequiredFailed": "yama öncesi anlık görüntü başarısız oldu, sunucuya yama uygulanmadı: %s",
+  "orch.snapshotOptionalFailed": "anlık görüntü başarısız oldu (zorunlu değil, devam ediliyor): %s",
+  "orch.defaultName": "%s yaması · %d sunucu · %s",
+  "orch.scope.security": "güvenlik",
+  "orch.scope.packages": "paket",
+  "orch.scope.all": "tüm"
+}

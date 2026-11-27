@@ -1,0 +1,10 @@
+{
+  "risk.cvss": "CVSS %s (%s)",
+  "risk.noCvss": "severity %s (no CVSS score)",
+  "risk.distroLow": "distribution rates it %s",
+  "risk.epss": "EPSS %s%% (percentile %s)",
+  "risk.kev": "listed in CISA Known Exploited Vulnerabilities",
+  "risk.exposed": "service is network-exposed",
+  "risk.noFix": "no fixed package available yet",
+  "risk.listening": "%s listening on %s"
+}

@@ -131,7 +131,7 @@ func TestProxmoxSnapshotFailureAbortsHost(t *testing.T) {
 	ctx := context.Background()
 	s, h, _, p := setupHookPlan(t, true)
 	ph := waitHostStatus(t, s, p.ID, "snapshot")
-	if ph.Status != "failed" || !strings.Contains(ph.Error, "snapshot failed") {
+	if ph.Status != "failed" || !strings.Contains(ph.Error, "anlık görüntü başarısız") {
 		t.Fatalf("host: %+v", ph)
 	}
 	cmds, _ := s.db.ListHostCommands(ctx, h.a.ID(), 10)

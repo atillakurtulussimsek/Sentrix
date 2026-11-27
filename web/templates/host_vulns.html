@@ -1,38 +1,38 @@
-{{define "title"}}{{.Data.Host.Hostname}} · Vulnerabilities{{end}}
+{{define "title"}}{{.Data.Host.Hostname}} · {{t "host.tab.vulns"}}{{end}}
 {{define "content"}}
 {{template "hosthead" .}}
 {{if not .Data.Supported}}
-<div class="card empty">No vulnerability data source exists for this distribution yet. Inventory and updates are still tracked.</div>
+<div class="card empty">{{t "host.vulnUnsupported"}}</div>
 {{else}}
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
   <div class="flex items-center gap-3">
-    <a href="?" class="{{if not .Data.KEVOnly}}font-semibold{{else}}text-zinc-500{{end}}">All</a>
-    <a href="?kev=1" class="{{if .Data.KEVOnly}}font-semibold{{else}}text-zinc-500{{end}}">Known exploited</a>
-    {{if .Data.Hidden}}<a href="?excepted=1" class="text-zinc-500 hover:underline">{{.Data.Hidden}} accepted/ignored hidden — show</a>{{end}}
+    <a href="?" class="{{if not .Data.KEVOnly}}font-semibold{{else}}text-zinc-500{{end}}">{{t "common.all"}}</a>
+    <a href="?kev=1" class="{{if .Data.KEVOnly}}font-semibold{{else}}text-zinc-500{{end}}">{{t "host.kevOnly"}}</a>
+    {{if .Data.Hidden}}<a href="?excepted=1" class="text-zinc-500 hover:underline">{{t "host.hiddenShow" .Data.Hidden}}</a>{{end}}
   </div>
-  {{if can .User "operator"}}<a href="/patches/new?hosts={{.Data.Host.ID}}&scope=security" class="btn-primary">Plan security patch…</a>{{end}}
+  {{if can .User "operator"}}<a href="/patches/new?hosts={{.Data.Host.ID}}&scope=security" class="btn-primary">{{t "host.planSecPatch"}}</a>{{end}}
 </div>
 <div class="card overflow-x-auto">
   {{if .Data.Findings}}
   <table class="table table-compact">
-    <thead><tr><th class="text-right">Risk</th><th>Vulnerability</th><th>Package</th><th>Installed</th><th>Fixed in</th><th>Why this score</th></tr></thead>
+    <thead><tr><th class="text-right">{{t "common.risk"}}</th><th>{{t "host.col.vuln"}}</th><th>{{t "common.package"}}</th><th>{{t "host.col.installed"}}</th><th>{{t "host.col.fixedIn"}}</th><th>{{t "host.col.why"}}</th></tr></thead>
     <tbody>{{range .Data.Findings}}
     <tr class="align-top">
       <td class="text-right"><span class="risk risk-{{riskclass .Risk}}">{{printf "%.0f" .Risk}}</span></td>
-      <td><a href="/vulns/{{.VulnID}}" class="font-mono text-xs font-semibold hover:underline">{{.VulnID}}</a> <span class="sev sev-{{.Severity}}">{{.Severity}}</span>{{if .Meta.KEV}} <span class="badge badge-offline">KEV</span>{{end}}{{with .Exception}} <span class="badge badge-muted" title="{{.Reason}}">{{.Kind}}</span>{{end}}
+      <td><a href="/vulns/{{.VulnID}}" class="font-mono text-xs font-semibold hover:underline">{{.VulnID}}</a> <span class="sev sev-{{.Severity}}">{{t (printf "severity.%s" .Severity)}}</span>{{if .Meta.KEV}} <span class="badge badge-offline">KEV</span>{{end}}{{with .Exception}} <span class="badge badge-muted" title="{{.Reason}}">{{t (printf "host.exc.%s" .Kind)}}</span>{{end}}
         <div class="max-w-sm truncate text-xs text-zinc-500" title="{{.Meta.Summary}}">{{.Meta.Summary}}</div></td>
       <td><a href="/packages/{{.Package}}" class="hover:underline">{{.Package}}</a>{{if gt (len .Binaries) 1}}<div class="text-[11px] text-zinc-500">{{join .Binaries ", "}}</div>{{end}}</td>
       <td class="font-mono text-xs">{{.Installed}}</td>
-      <td class="font-mono text-xs">{{if .Fixed}}{{.Fixed}}{{else}}<span class="text-zinc-400">no fix yet</span>{{end}}{{with .Advisory}}<div class="font-sans text-[11px] text-zinc-500">{{.}}</div>{{end}}</td>
-      <td class="text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400">{{range .Components}}<div><span class="inline-block w-10 text-right font-mono tabular-nums">{{printf "%+.0f" .Points}}</span> {{.Detail}}</div>{{end}}{{with .Exposed}}<div class="text-amber-600">{{.}}</div>{{end}}</td>
+      <td class="font-mono text-xs">{{if .Fixed}}{{.Fixed}}{{else}}<span class="text-zinc-400">{{t "host.noFix"}}</span>{{end}}{{with .Advisory}}<div class="font-sans text-[11px] text-zinc-500">{{.}}</div>{{end}}</td>
+      <td class="text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400">{{range .Components}}<div><span class="inline-block w-10 text-right font-mono tabular-nums">{{printf "%+.0f" .Points}}</span> {{riskdetail .}}</div>{{end}}{{with .Exposed}}<div class="text-amber-600">{{exposed .}}</div>{{end}}</td>
     </tr>{{end}}</tbody>
   </table>
-  {{else}}<div class="empty">No open vulnerabilities{{range .Data.Feeds}}{{if and .Relevant .LastSuccess.IsZero}} — the {{.Name}} feed has not synced yet{{break}}{{end}}{{end}}.</div>{{end}}
+  {{else}}<div class="empty">{{t "host.noVulns"}}{{range .Data.Feeds}}{{if and .Relevant .LastSuccess.IsZero}}{{t "host.feedNotSynced" .Name}}{{break}}{{end}}{{end}}.</div>{{end}}
 </div>
 {{if .Data.Resolved}}
 <section class="card mt-6">
-  <div class="card-header"><h2>Recently resolved</h2></div>
-  <table class="table table-compact"><tbody>{{range .Data.Resolved}}<tr><td class="font-mono text-xs">{{.VulnID}}</td><td>{{.Package}}</td><td class="font-mono text-xs text-zinc-500">was {{.Installed}}</td><td class="text-right text-xs text-zinc-500">{{reltime .LastSeen}}</td></tr>{{end}}</tbody></table>
+  <div class="card-header"><h2>{{t "host.resolved"}}</h2></div>
+  <table class="table table-compact"><tbody>{{range .Data.Resolved}}<tr><td class="font-mono text-xs">{{.VulnID}}</td><td>{{.Package}}</td><td class="font-mono text-xs text-zinc-500">{{t "host.was" .Installed}}</td><td class="text-right text-xs text-zinc-500">{{reltime .LastSeen}}</td></tr>{{end}}</tbody></table>
 </section>
 {{end}}
 {{end}}

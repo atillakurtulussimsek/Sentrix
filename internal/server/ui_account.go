@@ -12,6 +12,7 @@ import (
 	"rsc.io/qr"
 
 	"github.com/atillakurtulussimsek/Sentrix/internal/auth"
+	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
 )
 
@@ -43,7 +44,45 @@ func (s *Server) handleAccount(w http.ResponseWriter, r *http.Request) {
 		uri := auth.TOTPURI("Sentrix", a.User.Username, secret)
 		d["Secret"], d["URI"], d["QR"] = secret, uri, qrDataURI(uri)
 	}
-	s.renderPage(w, r, 200, "settings_account", "My account", settingsData("account", d))
+	d["DefaultLangName"] = i18n.DisplayName(s.cfg.Language)
+	s.renderPage(w, r, 200, "settings_account", s.t(r, "settings.nav.account"), settingsData("account", d))
+}
+
+// handleAccountLanguage stores the user's UI language; an empty value resets it
+// to the server default and clears the pre-login language cookie.
+func (s *Server) handleAccountLanguage(w http.ResponseWriter, r *http.Request) {
+	a := authFrom(r.Context())
+	lang := r.PostFormValue("lang")
+	if lang != "" && !s.cat.Supported(lang) {
+		s.httpError(w, r, http.StatusBadRequest, s.t(r, "lang.unsupported"))
+		return
+	}
+	if err := s.db.SetUserLanguage(r.Context(), a.User.ID, lang); err != nil {
+		s.log.Error("set language", "err", err)
+		s.httpError(w, r, http.StatusInternalServerError, s.t(r, "error.internal"))
+		return
+	}
+	effective := lang
+	if lang == "" {
+		s.setCookie(w, cookieLang, "", -1)
+		effective = s.cfg.Language
+	} else {
+		s.setCookie(w, cookieLang, lang, 365*24*3600)
+	}
+	s.auditReq(r, "user.language", a.User.ID, "language="+lang)
+	s.setFlash(w, "ok", s.cat.T(effective, "account.languageSaved"))
+	http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
+}
+
+// passwordProblem returns a localized reason why pw is unacceptable, or "".
+func (s *Server) passwordProblem(r *http.Request, pw string) string {
+	if auth.ValidatePassword(pw) == nil {
+		return ""
+	}
+	if len([]rune(pw)) < auth.MinPasswordLength {
+		return s.t(r, "account.passwordTooShort", auth.MinPasswordLength)
+	}
+	return s.t(r, "account.passwordTooLong")
 }
 
 func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
@@ -54,37 +93,37 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
 	}
 	if auth.VerifyPassword(a.User.PasswordHash, r.PostFormValue("current")) != nil {
 		s.auditReq(r, "user.password_change_failed", a.User.ID, "wrong current password")
-		back("error", "Current password is wrong.")
+		back("error", s.t(r, "account.wrongCurrent"))
 		return
 	}
 	pw := r.PostFormValue("new")
 	if pw != r.PostFormValue("new2") {
-		back("error", "New passwords do not match.")
+		back("error", s.t(r, "account.mismatch"))
 		return
 	}
-	if err := auth.ValidatePassword(pw); err != nil {
-		back("error", err.Error())
+	if msg := s.passwordProblem(r, pw); msg != "" {
+		back("error", msg)
 		return
 	}
 	h, err := auth.HashPassword(pw)
 	if err != nil {
-		back("error", "internal error")
+		back("error", s.t(r, "error.internal"))
 		return
 	}
 	u := a.User
 	u.PasswordHash = h
 	if err := s.db.UpdateUser(r.Context(), u); err != nil {
-		back("error", "internal error")
+		back("error", s.t(r, "error.internal"))
 		return
 	}
 	// sign out every other session, keep this one
 	_ = s.db.DeleteUserSessions(r.Context(), u.ID)
 	if err := s.startSession(r.Context(), w, r, u, false); err != nil {
-		back("error", "internal error")
+		back("error", s.t(r, "error.internal"))
 		return
 	}
 	s.auditReq(r, "user.password_change", u.ID, "other sessions revoked")
-	back("ok", "Password changed. Other sessions were signed out.")
+	back("ok", s.t(r, "account.passwordChanged"))
 }
 
 func (s *Server) handleTOTPEnable(w http.ResponseWriter, r *http.Request) {
@@ -95,34 +134,34 @@ func (s *Server) handleTOTPEnable(w http.ResponseWriter, r *http.Request) {
 	}
 	c, err := r.Cookie(cookieTOTPSetup)
 	if err != nil {
-		back("error", "Setup expired, reload the page.")
+		back("error", s.t(r, "account.setupExpired"))
 		return
 	}
 	secret, err := s.box.Open(c.Value)
 	if err != nil || !auth.VerifyTOTP(secret, r.PostFormValue("code"), time.Now()) {
-		back("error", "The code did not match. Check your device clock and try again.")
+		back("error", s.t(r, "account.codeMismatch"))
 		return
 	}
 	sealed, err := s.box.Seal(secret)
 	if err != nil {
-		back("error", "internal error")
+		back("error", s.t(r, "error.internal"))
 		return
 	}
 	u := a.User
 	u.TOTPSecret = sealed
 	if err := s.db.UpdateUser(r.Context(), u); err != nil {
-		back("error", "internal error")
+		back("error", s.t(r, "error.internal"))
 		return
 	}
 	s.setCookie(w, cookieTOTPSetup, "", -1)
 	s.auditReq(r, "user.totp_enable", u.ID, "")
-	back("ok", "Two-factor authentication enabled.")
+	back("ok", s.t(r, "account.totpEnabled"))
 }
 
 func (s *Server) handleTOTPDisable(w http.ResponseWriter, r *http.Request) {
 	a := authFrom(r.Context())
 	if auth.VerifyPassword(a.User.PasswordHash, r.PostFormValue("current")) != nil {
-		s.setFlash(w, "error", "Password required to disable 2FA.")
+		s.setFlash(w, "error", s.t(r, "account.totpPasswordRequired"))
 		http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
 		return
 	}
@@ -130,7 +169,7 @@ func (s *Server) handleTOTPDisable(w http.ResponseWriter, r *http.Request) {
 	u.TOTPSecret = ""
 	_ = s.db.UpdateUser(r.Context(), u)
 	s.auditReq(r, "user.totp_disable", u.ID, "")
-	s.setFlash(w, "ok", "Two-factor authentication disabled.")
+	s.setFlash(w, "ok", s.t(r, "account.totpDisabled"))
 	http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
 }
 
@@ -160,7 +199,7 @@ func (s *Server) tokensPage(w http.ResponseWriter, r *http.Request, newToken str
 		rows = append(rows, tokenRow{t, names[t.UserID]})
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	s.renderPage(w, r, 200, "settings_tokens", "API tokens", settingsData("tokens", map[string]any{"Tokens": rows, "Role": a.Role, "Base": strings.TrimRight(s.cfg.BaseURL, "/"), "NewToken": newToken}))
+	s.renderPage(w, r, 200, "settings_tokens", s.t(r, "settings.nav.tokens"), settingsData("tokens", map[string]any{"Tokens": rows, "Role": a.Role, "Base": strings.TrimRight(s.cfg.BaseURL, "/"), "NewToken": newToken}))
 }
 
 func (s *Server) handleTokenCreate(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +209,7 @@ func (s *Server) handleTokenCreate(w http.ResponseWriter, r *http.Request) {
 		scope = "read"
 	}
 	if store.RoleRank(scopeRole(scope)) > store.RoleRank(a.Role) {
-		s.setFlash(w, "error", "A token cannot have more privileges than your role.")
+		s.setFlash(w, "error", s.t(r, "tokens.tooPrivileged"))
 		http.Redirect(w, r, "/settings/tokens", http.StatusSeeOther)
 		return
 	}

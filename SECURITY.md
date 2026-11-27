@@ -1,3 +1,5 @@
+[Türkçe](SECURITY.tr.md) · **English**
+
 # Security policy
 
 ## Reporting a vulnerability

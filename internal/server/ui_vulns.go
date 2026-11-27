@@ -85,7 +85,7 @@ func (s *Server) handleVuln(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	meta, err := s.db.GetVuln(r.Context(), id)
 	if errors.Is(err, store.ErrNotFound) {
-		s.httpError(w, r, 404, "Unknown vulnerability "+id+".")
+		s.httpError(w, r, 404, s.t(r, "vuln.unknown", id))
 		return
 	}
 	if err != nil {
@@ -149,7 +149,7 @@ func (s *Server) handleExceptionCreate(w http.ResponseWriter, r *http.Request) {
 	reason := truncate(strings.TrimSpace(r.PostFormValue("reason")), 1000)
 	back := "/vulns/" + url.PathEscape(id)
 	if kind != "accepted" && kind != "ignored" || reason == "" {
-		s.setFlash(w, "error", "Choose a type and give a reason.")
+		s.setFlash(w, "error", s.t(r, "exc.flash.invalid"))
 		http.Redirect(w, r, back, http.StatusSeeOther)
 		return
 	}
@@ -161,7 +161,7 @@ func (s *Server) handleExceptionCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if e.HostID != "" {
 		if _, err := s.db.GetHost(r.Context(), e.HostID); err != nil {
-			s.httpError(w, r, 400, "unknown host")
+			s.httpError(w, r, 400, s.t(r, "exc.unknownHost"))
 			return
 		}
 	}
@@ -175,7 +175,7 @@ func (s *Server) handleExceptionCreate(w http.ResponseWriter, r *http.Request) {
 		scope = "host " + e.HostID
 	}
 	s.auditReq(r, "vuln.exception.create", id, kind+" for "+scope+": "+reason)
-	s.setFlash(w, "ok", "Exception recorded.")
+	s.setFlash(w, "ok", s.t(r, "exc.flash.created"))
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
@@ -195,19 +195,29 @@ type feedView struct {
 	Relevant          bool
 }
 
-var feedDescriptions = []struct{ key, name, desc string }{
-	{"debian-tracker", "Debian Security Tracker", "Fixed versions and open issues for Debian releases (backport-aware)."},
-	{"osv-ubuntu", "OSV · Ubuntu", "Ubuntu CVE tracker data via OSV.dev."},
-	{"osv-alpine", "OSV · Alpine", "Alpine secdb via OSV.dev."},
-	{"osv-rocky", "OSV · Rocky Linux", "Rocky Linux errata (RLSA) via OSV.dev."},
-	{"osv-almalinux", "OSV · AlmaLinux", "AlmaLinux errata (ALSA) via OSV.dev; also applied to Rocky Linux (same RHEL sources)."},
-	{"cisa-kev", "CISA KEV", "Known exploited vulnerabilities catalog."},
-	{"first-epss", "FIRST EPSS", "Exploit prediction scores."},
-	{"nvd", "NVD", "CVSS scores for CVEs lacking distro scoring (incremental)."},
+// feedDescriptions lists the feeds; descriptions are catalog keys vuln.feed.<key>.
+var feedDescriptions = []struct{ key, name string }{
+	{"debian-tracker", "Debian Security Tracker"},
+	{"osv-ubuntu", "OSV · Ubuntu"},
+	{"osv-alpine", "OSV · Alpine"},
+	{"osv-rocky", "OSV · Rocky Linux"},
+	{"osv-almalinux", "OSV · AlmaLinux"},
+	{"cisa-kev", "CISA KEV"},
+	{"first-epss", "FIRST EPSS"},
+	{"nvd", "NVD"},
+}
+
+// ctxLang returns the request language stored in ctx by withLang (server default otherwise).
+func (s *Server) ctxLang(ctx context.Context) string {
+	if l, ok := ctx.Value(langKey{}).(string); ok {
+		return l
+	}
+	return s.cfg.Language
 }
 
 func (s *Server) feedSummary(ctx context.Context) []feedView {
 	st, _ := s.db.GetFeedStatus(ctx)
+	lang := s.ctxLang(ctx)
 	ecos, _ := s.fleetEcosystems(ctx)
 	var out []feedView
 	for _, f := range feedDescriptions {
@@ -217,13 +227,13 @@ func (s *Server) feedSummary(ctx context.Context) []feedView {
 		} else if f.key == "debian-tracker" {
 			rel = len(ecos["debian"]) > 0
 		}
-		out = append(out, feedView{FeedStatus: st[f.key], Name: f.name, Description: f.desc, Relevant: rel})
+		out = append(out, feedView{FeedStatus: st[f.key], Name: f.name, Description: s.cat.T(lang, "vuln.feed."+f.key), Relevant: rel})
 	}
 	return out
 }
 
 func (s *Server) handleFeeds(w http.ResponseWriter, r *http.Request) {
-	s.renderPage(w, r, 200, "settings_feeds", "Vulnerability feeds", settingsData("feeds", map[string]any{
+	s.renderPage(w, r, 200, "settings_feeds", s.t(r, "vuln.feeds.title"), settingsData("feeds", map[string]any{
 		"Feeds": s.feedSummary(r.Context()), "Enabled": s.cfg.Feeds.Enabled, "Interval": s.cfg.Feeds.Interval.String(),
 		"NVDKey": s.cfg.Feeds.NVDAPIKey != "", "Syncing": s.isSyncing()}))
 }
@@ -236,7 +246,7 @@ func (s *Server) isSyncing() bool {
 
 func (s *Server) handleFeedsSync(w http.ResponseWriter, r *http.Request) {
 	if !s.cfg.Feeds.Enabled {
-		s.setFlash(w, "error", "Feeds are disabled in the configuration (feeds.enabled).")
+		s.setFlash(w, "error", s.t(r, "vuln.feeds.disabled"))
 		http.Redirect(w, r, "/settings/feeds", http.StatusSeeOther)
 		return
 	}
@@ -246,7 +256,7 @@ func (s *Server) handleFeedsSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	s.auditReq(r, "feeds.sync", "", "manual")
-	s.setFlash(w, "ok", "Feed synchronisation started. Large feeds can take several minutes.")
+	s.setFlash(w, "ok", s.t(r, "vuln.feeds.syncStarted"))
 	http.Redirect(w, r, "/settings/feeds", http.StatusSeeOther)
 }
 
@@ -263,7 +273,7 @@ func (s *Server) enrichRisk(ctx context.Context, sums []*hostSummary) {
 
 func (s *Server) extraHostTabs(ctx context.Context, hostID string) []hostTab {
 	risks, _ := s.db.HostRisks(ctx)
-	tabs := []hostTab{{Key: "vulns", Label: "Vulnerabilities", Path: "/vulns", Count: risks[hostID].Total}}
+	tabs := []hostTab{{Key: "vulns", Label: s.cat.T(s.ctxLang(ctx), "nav.vulns"), Path: "/vulns", Count: risks[hostID].Total}}
 	return append(tabs, s.patchHostTabs(ctx, hostID)...)
 }
 

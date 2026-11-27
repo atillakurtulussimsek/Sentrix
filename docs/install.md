@@ -1,3 +1,5 @@
+[Türkçe](tr/install.md) · **English**
+
 # Installation
 
 ## Server
@@ -9,6 +11,8 @@ curl -fsSLO https://raw.githubusercontent.com/atillakurtulussimsek/Sentrix/main/
 SENTRIX_HOST=sentrix.example.com docker compose up -d
 ```
 
+- The default language is Turkish. For English, set `SENTRIX_LANGUAGE: en` under `environment:` in
+  `docker-compose.yml` (supported: `tr`, `en`). Each user can still choose their own UI language.
 - Data (SQLite database, internal CA, secret key, feed cache) lives in the `sentrix-data` volume (`/data`).
   **Back it up**, but keep `secret.key` and `pki/ca.key` away from untrusted storage.
 - The image runs as an unprivileged user on a distroless base and has a built-in health check.
@@ -57,7 +61,7 @@ curl -fsSL https://sentrix.example.com/install.sh | sudo sh -s -- --token sxe_�
 
 It downloads the agent from your server, writes `/etc/sentrix/agent.yaml`, enrols (one-time token +
 CA fingerprint pinning) and installs a systemd unit. Options: `--hostname`, `--no-patching` (read-only agent),
-`--server`, `--download-url`.
+`--server`, `--download-url`, `--lang tr|en` (installer language, default `tr`).
 
 ### Package
 

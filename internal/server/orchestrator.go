@@ -86,7 +86,7 @@ func (s *Server) CreatePlan(ctx context.Context, req PlanRequest, actor string) 
 		}
 	}
 	if req.Name == "" {
-		req.Name = fmt.Sprintf("%s patch · %d host(s) · %s", req.Scope, len(ids), time.Now().Format("2006-01-02 15:04"))
+		req.Name = s.tDefault("orch.defaultName", s.tDefault("orch.scope."+req.Scope), len(ids), time.Now().Format("2006-01-02 15:04"))
 	}
 	p, err := s.db.CreatePlan(ctx, store.Plan{Name: truncate(req.Name, 200), Scope: req.Scope, Packages: req.Packages, Status: "dry_run", PolicyID: req.PolicyID,
 		Reboot: req.Reboot, Canary: req.Canary, MaxParallel: req.MaxParallel, SnapshotHook: req.SnapshotHook, SnapshotRequired: req.SnapshotRequired, CreatedBy: actor}, ids)
@@ -126,7 +126,7 @@ func (s *Server) CancelPlan(ctx context.Context, id, actor string) error {
 	hosts, _ := s.db.ListPlanHosts(ctx, id)
 	for _, h := range hosts {
 		if h.Status == "pending" || h.Status == "dry_ok" || h.Status == "dry_failed" || h.Status == "dry_run" {
-			h.Status, h.Error = "skipped", "plan cancelled"
+			h.Status, h.Error = "skipped", s.tDefault("orch.planCancelled")
 			_ = s.db.SavePlanHost(ctx, h)
 		}
 	}
@@ -279,7 +279,7 @@ func (s *Server) advanceDryRun(ctx context.Context, p store.Plan) error {
 				h.Status, h.Error = "dry_failed", commandError(c)
 			default:
 				if now.Sub(h.StepStarted) > dryRunTimeout {
-					h.Status, h.Error = "dry_failed", "dry run timed out (host offline?)"
+					h.Status, h.Error = "dry_failed", s.tDefault("orch.dryTimeout")
 				} else {
 					allDone = false
 				}
@@ -403,17 +403,17 @@ func (s *Server) advanceRun(ctx context.Context, p store.Plan) error {
 				h.Status = "skipped"
 				switch {
 				case d.Abort:
-					h.Error = "not started: an earlier host failed"
+					h.Error = s.tDefault("orch.notStartedEarlierFailed")
 				case windowClosed:
-					h.Error = "not started: maintenance window closed"
+					h.Error = s.tDefault("orch.notStartedWindowClosed")
 				}
 				_ = s.db.SavePlanHost(ctx, *h)
 			}
 		}
 		if failed > 0 {
-			status, msg = "failed", fmt.Sprintf("%d host(s) failed; rollout stopped", failed)
+			status, msg = "failed", s.tDefault("orch.hostsFailed", failed)
 		} else if windowClosed && !d.Finish {
-			msg = "maintenance window closed before all hosts were patched"
+			msg = s.tDefault("orch.windowClosedEarly")
 		}
 		if err := s.db.UpdatePlanStatus(ctx, p.ID, status, msg); err != nil {
 			return err
@@ -478,7 +478,7 @@ func (s *Server) stepHost(ctx context.Context, p store.Plan, h *store.PlanHost) 
 	switch h.Status {
 	case "snapshot":
 		if now.Sub(h.StepStarted) > snapshotTimout {
-			return s.failHost(ctx, p, h, "snapshot step timed out")
+			return s.failHost(ctx, p, h, s.tDefault("orch.snapshotTimeout"))
 		}
 		return nil // the snapshot goroutine moves the host on
 	case "patching":
@@ -507,7 +507,7 @@ func (s *Server) stepHost(ctx context.Context, p store.Plan, h *store.PlanHost) 
 			if needReboot {
 				rc, err := s.QueueCommand(ctx, h.HostID, protocol.ActionReboot, protocol.RebootParams{}, false, p.ID, planActor(p))
 				if err != nil {
-					return s.failHost(ctx, p, h, "queue reboot: "+err.Error())
+					return s.failHost(ctx, p, h, s.tDefault("orch.queueReboot", err.Error()))
 				}
 				h.Status, h.StepCmd, h.StepStarted = "rebooting", rc.ID, now
 			} else {
@@ -518,10 +518,10 @@ func (s *Server) stepHost(ctx context.Context, p store.Plan, h *store.PlanHost) 
 			if c.Result != nil {
 				h.Output = c.Result.Output
 			}
-			return s.failHost(ctx, p, h, "patch failed: "+commandError(c))
+			return s.failHost(ctx, p, h, s.tDefault("orch.patchFailed", commandError(c)))
 		}
 		if now.Sub(h.StepStarted) > patchTimeout {
-			return s.failHost(ctx, p, h, "patch command timed out")
+			return s.failHost(ctx, p, h, s.tDefault("orch.patchTimeout"))
 		}
 	case "rebooting":
 		host, err := s.db.GetHost(ctx, h.HostID)
@@ -534,7 +534,7 @@ func (s *Server) stepHost(ctx context.Context, p store.Plan, h *store.PlanHost) 
 			return s.db.SavePlanHost(ctx, *h)
 		}
 		if now.Sub(h.StepStarted) > rebootTimeout {
-			return s.failHost(ctx, p, h, "host did not come back online after reboot")
+			return s.failHost(ctx, p, h, s.tDefault("orch.noComeback"))
 		}
 	case "verifying":
 		host, err := s.db.GetHost(ctx, h.HostID)
@@ -546,7 +546,7 @@ func (s *Server) stepHost(ctx context.Context, p store.Plan, h *store.PlanHost) 
 		online := host.Online(now, s.cfg.OfflineAfter)
 		if !online || !freshInventory {
 			if now.Sub(h.StepStarted) > verifyTimeout {
-				return s.failHost(ctx, p, h, "verification timed out (agent offline or no post-patch inventory)")
+				return s.failHost(ctx, p, h, s.tDefault("orch.verifyTimeout"))
 			}
 			return nil
 		}
@@ -555,7 +555,7 @@ func (s *Server) stepHost(ctx context.Context, p store.Plan, h *store.PlanHost) 
 			if now.Sub(h.StepStarted) < 2*time.Minute {
 				return nil
 			}
-			return s.failHost(ctx, p, h, "watched services not active after patch: "+strings.Join(down, ", "))
+			return s.failHost(ctx, p, h, s.tDefault("orch.servicesDown", strings.Join(down, ", ")))
 		}
 		h.FindingsAfter, _ = s.db.CountFindings(ctx, h.HostID)
 		h.Status, h.FinishedAt = "done", now

@@ -18,11 +18,21 @@ type RiskInput struct {
 	Exposed      bool
 }
 
-// RiskComponent is one explained contribution to the score.
+// RiskComponent is one explained contribution to the score. Detail is the English
+// explanation; Msgs carries the same explanation as message-catalog keys (risk.*)
+// with preformatted string arguments so the UI can render it in any language.
 type RiskComponent struct {
-	Name   string  `json:"name"`
-	Points float64 `json:"points"`
-	Detail string  `json:"detail"`
+	Name   string    `json:"name"`
+	Points float64   `json:"points"`
+	Detail string    `json:"detail"`
+	Msgs   []RiskMsg `json:"msgs,omitempty"`
+}
+
+// RiskMsg is a translatable message: catalog key plus string arguments. An argument
+// of the form "severity.<level>" is itself a catalog key.
+type RiskMsg struct {
+	Key  string   `json:"key"`
+	Args []string `json:"args,omitempty"`
 }
 
 var severityPoints = map[string]float64{"critical": 57, "high": 45, "medium": 30, "low": 12, "unknown": 24}
@@ -43,26 +53,33 @@ func Score(in RiskInput) (float64, []RiskComponent) {
 	}
 	var pts float64
 	var detail string
+	var msgs []RiskMsg
 	if in.CVSS > 0 {
 		pts = in.CVSS * 6
-		detail = fmt.Sprintf("CVSS %.1f (%s)", in.CVSS, sev)
+		cvss := fmt.Sprintf("%.1f", in.CVSS)
+		detail = fmt.Sprintf("CVSS %s (%s)", cvss, sev)
+		msgs = append(msgs, RiskMsg{"risk.cvss", []string{cvss, "severity." + sev}})
 	} else {
 		pts = severityPoints[sev]
 		detail = "severity " + sev + " (no CVSS score)"
+		msgs = append(msgs, RiskMsg{"risk.noCvss", []string{"severity." + sev}})
 	}
 	if ds := strings.ToLower(in.DistroSev); ds == "unimportant" || ds == "negligible" || ds == "low" || ds == "low*" {
 		pts /= 2
 		detail += "; distro rates it " + ds
+		msgs = append(msgs, RiskMsg{"risk.distroLow", []string{ds}})
 	}
-	comps = append(comps, RiskComponent{"severity", round1(pts), detail})
+	comps = append(comps, RiskComponent{"severity", round1(pts), detail, msgs})
 	if in.EPSSPct > 0 {
-		comps = append(comps, RiskComponent{"epss", round1(in.EPSSPct * 15), fmt.Sprintf("EPSS %.2f%% (percentile %.0f)", in.EPSS*100, in.EPSSPct*100)})
+		e, p := fmt.Sprintf("%.2f", in.EPSS*100), fmt.Sprintf("%.0f", in.EPSSPct*100)
+		comps = append(comps, RiskComponent{"epss", round1(in.EPSSPct * 15), fmt.Sprintf("EPSS %s%% (percentile %s)", e, p),
+			[]RiskMsg{{"risk.epss", []string{e, p}}}})
 	}
 	if in.KEV {
-		comps = append(comps, RiskComponent{"kev", 15, "listed in CISA Known Exploited Vulnerabilities"})
+		comps = append(comps, RiskComponent{"kev", 15, "listed in CISA Known Exploited Vulnerabilities", []RiskMsg{{Key: "risk.kev"}}})
 	}
 	if in.Exposed {
-		comps = append(comps, RiskComponent{"exposure", 10, "service is network-exposed"})
+		comps = append(comps, RiskComponent{"exposure", 10, "service is network-exposed", []RiskMsg{{Key: "risk.exposed"}}})
 	}
 	total := 0.0
 	for _, c := range comps {
@@ -70,7 +87,7 @@ func Score(in RiskInput) (float64, []RiskComponent) {
 	}
 	if !in.FixAvailable {
 		penalty := total * 0.15
-		comps = append(comps, RiskComponent{"no_fix", -round1(penalty), "no fixed package available yet"})
+		comps = append(comps, RiskComponent{"no_fix", -round1(penalty), "no fixed package available yet", []RiskMsg{{Key: "risk.noFix"}}})
 		total -= penalty
 	}
 	return round1(math.Max(0, math.Min(100, total))), comps

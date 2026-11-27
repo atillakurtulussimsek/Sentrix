@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
 )
 
 // RuleConfig is the JSON configuration of an alert rule.
@@ -69,8 +71,24 @@ func (c RuleConfig) LabelsMatch(labels string) bool {
 	return c.Labels == "" || c.Labels == labels
 }
 
-// Describe renders a short human description.
+// Translator renders a catalog key (with fmt args) in the caller's language.
+type Translator func(key string, args ...any) string
+
+// English translates into English using the embedded catalog.
+func English(key string, args ...any) string {
+	return i18n.Default().T("en", key, args...)
+}
+
+// Describe renders a short human description in English.
 func (c RuleConfig) Describe(kind string) string {
+	return c.DescribeIn(kind, English)
+}
+
+// DescribeIn renders a short human description using t (English when nil).
+func (c RuleConfig) DescribeIn(kind string, t Translator) string {
+	if t == nil {
+		t = English
+	}
 	switch kind {
 	case "threshold":
 		s := fmt.Sprintf("%s %s %g", c.Metric, c.Op, c.Value)
@@ -79,17 +97,20 @@ func (c RuleConfig) Describe(kind string) string {
 		}
 		return s
 	case "state":
+		if k := "notify.cond." + c.Condition; t(k) != k {
+			return t(k)
+		}
 		return strings.ReplaceAll(c.Condition, "_", " ")
 	case "vulnerability":
 		if c.OnlyKEV {
-			return "new known-exploited CVE"
+			return t("notify.rule.kev")
 		}
-		return "new " + c.MinSeverity + "+ CVE"
+		return t("notify.rule.minSeverity", c.MinSeverity)
 	case "patch":
 		if c.OnlyFailed {
-			return "patch plan failed"
+			return t("notify.rule.patchFailed")
 		}
-		return "patch plan finished"
+		return t("notify.rule.patchFinished")
 	}
 	return kind
 }

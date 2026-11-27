@@ -98,3 +98,11 @@ Short ADR entries: date, decision, alternatives, reason.
 - Cookies are `Secure` whenever `base_url` is https; plain-HTTP installs keep working but log a warning.
 - Per-IP limiter shared for login, bearer-token and enrolment failures; per-user limiter for password/TOTP.
 - Password minimum is 10 characters (accepted deviation from ASVS 2.1.1, see docs/security-review.md).
+
+## 2026-11-27 — Localization
+- Turkish is the primary language (`language: tr` default); English is the fallback for missing keys.
+- UI language is per user (`users.language`, migration 008), else the `sentrix_lang` cookie (pre-login choice), else the server default. Templates are parsed once per language instead of cloning per request.
+- Notifications, digests, default plan/rule names and stored plan/snapshot messages use the server default language — they are not addressed to a single user. Logs, audit details, JSON API errors and machine output stay English.
+- CLIs: `--lang` > `SENTRIX_LANGUAGE` > config `language` > `tr`; `LANG`/`LC_ALL` are deliberately ignored so Turkish stays the default. Acceptance scripts pin `SENTRIX_LANGUAGE=en` because they parse CLI output.
+- Risk components carry catalog keys (`msgs`) alongside the English `detail`, so stored findings render in any language; old rows fall back to `detail`.
+- Upstream data (CVE descriptions, distro/agent error text) is shown untranslated.

@@ -3,21 +3,21 @@
 <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">{{t "nav.vulns"}}</h1>
-    <p class="text-sm text-zinc-500">Distinct CVEs affecting the fleet, highest risk first.</p>
+    <p class="text-sm text-zinc-500">{{t "vuln.list.subtitle"}}</p>
   </div>
   <div class="flex gap-2 text-xs">
-    {{range list "critical" "high" "medium" "low"}}<a href="/vulns?severity={{.}}" class="sev sev-{{.}}">{{.}} {{index $.Data.Counts .}}</a>{{end}}
+    {{range list "critical" "high" "medium" "low"}}<a href="/vulns?severity={{.}}" class="sev sev-{{.}}">{{t (printf "severity.%s" .)}} {{index $.Data.Counts .}}</a>{{end}}
   </div>
 </div>
 <form class="mb-4 flex flex-wrap items-center gap-2" hx-get="/vulns" hx-target="#vuln-table" hx-select="#vuln-table" hx-swap="outerHTML" hx-trigger="input changed delay:300ms from:input[type=search], change" hx-push-url="true">
-  <input type="search" name="q" value="{{.Data.Filter.Query}}" placeholder="CVE ID or package…" class="input max-w-xs">
+  <input type="search" name="q" value="{{.Data.Filter.Query}}" placeholder="{{t "vuln.filter.search"}}" class="input max-w-xs">
   <select name="severity" class="input w-auto">
-    <option value="">All severities</option>
-    {{range list "high+" "critical" "high" "medium" "low" "unknown"}}<option value="{{.}}" {{if eq . $.Data.Filter.Severity}}selected{{end}}>{{if eq . "high+"}}high and critical{{else}}{{.}}{{end}}</option>{{end}}
+    <option value="">{{t "vuln.filter.allSeverities"}}</option>
+    {{range list "high+" "critical" "high" "medium" "low" "unknown"}}<option value="{{.}}" {{if eq . $.Data.Filter.Severity}}selected{{end}}>{{if eq . "high+"}}{{t "vuln.filter.highPlus"}}{{else}}{{t (printf "severity.%s" .)}}{{end}}</option>{{end}}
   </select>
-  <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="kev" value="1" {{if .Data.Filter.KEV}}checked{{end}}> known exploited</label>
-  <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="fixable" value="1" {{if .Data.Filter.Fixable}}checked{{end}}> fix available</label>
-  <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="excepted" value="1" {{if .Data.Filter.IncludeExcepted}}checked{{end}}> include accepted/ignored</label>
+  <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="kev" value="1" {{if .Data.Filter.KEV}}checked{{end}}> {{t "vuln.filter.kev"}}</label>
+  <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="fixable" value="1" {{if .Data.Filter.Fixable}}checked{{end}}> {{t "vuln.filter.fixable"}}</label>
+  <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="excepted" value="1" {{if .Data.Filter.IncludeExcepted}}checked{{end}}> {{t "vuln.filter.excepted"}}</label>
 </form>
 {{template "vulntable" .}}
 {{end}}
@@ -26,23 +26,23 @@
 <div id="vuln-table" class="card overflow-x-auto">
   {{if .Data.Rows}}
   <table class="table table-compact">
-    <thead><tr><th class="text-right">Risk</th><th>Vulnerability</th><th>Severity</th><th class="text-right">CVSS</th><th class="text-right">EPSS</th><th>Packages</th><th class="text-right">Hosts</th><th>Fix</th></tr></thead>
+    <thead><tr><th class="text-right">{{t "common.risk"}}</th><th>{{t "vuln.col.vulnerability"}}</th><th>{{t "common.severity"}}</th><th class="text-right">CVSS</th><th class="text-right">EPSS</th><th>{{t "common.packages"}}</th><th class="text-right">{{t "common.hosts"}}</th><th>{{t "vuln.col.fix"}}</th></tr></thead>
     <tbody>{{range .Data.Rows}}
     <tr>
       <td class="text-right"><span class="risk risk-{{riskclass .MaxRisk}}">{{printf "%.0f" .MaxRisk}}</span></td>
-      <td><a href="/vulns/{{.ID}}" class="font-mono text-xs font-semibold hover:underline">{{.ID}}</a>{{if .KEV}} <span class="badge badge-offline" title="CISA known exploited, added {{.KEVAdded}}">KEV</span>{{end}}
+      <td><a href="/vulns/{{.ID}}" class="font-mono text-xs font-semibold hover:underline">{{.ID}}</a>{{if .KEV}} <span class="badge badge-offline" title="{{t "vuln.kevTitle" .KEVAdded}}">KEV</span>{{end}}
         <div class="max-w-md truncate text-xs text-zinc-500" title="{{.Summary}}">{{.Summary}}</div></td>
-      <td><span class="sev sev-{{.EffSeverity}}">{{.EffSeverity}}</span></td>
+      <td><span class="sev sev-{{.EffSeverity}}">{{t (printf "severity.%s" .EffSeverity)}}</span></td>
       <td class="text-right tabular-nums">{{if .CVSSScore}}{{printf "%.1f" .CVSSScore}}{{else}}<span class="text-zinc-400">–</span>{{end}}</td>
       <td class="text-right tabular-nums">{{if .EPSS}}{{printf "%.1f" (mul100 .EPSS)}}%{{else}}<span class="text-zinc-400">–</span>{{end}}</td>
       <td class="max-w-xs truncate text-xs" title="{{.Packages}}">{{.Packages}}</td>
       <td class="text-right tabular-nums">{{.Hosts}}</td>
-      <td>{{if .Fixable}}<span class="badge badge-online">available</span>{{else}}<span class="badge badge-muted">none yet</span>{{end}}</td>
+      <td>{{if .Fixable}}<span class="badge badge-online">{{t "vuln.fix.available"}}</span>{{else}}<span class="badge badge-muted">{{t "vuln.fix.none"}}</span>{{end}}</td>
     </tr>
     {{end}}</tbody>
   </table>
   {{else}}
-  <div class="empty">{{if .Data.Filter.Query}}No vulnerabilities match.{{else}}No vulnerabilities found{{range .Data.Feeds}}{{if and .Relevant .LastSuccess.IsZero}} — waiting for the first feed sync ({{.Name}}){{break}}{{end}}{{end}}.{{end}}</div>
+  <div class="empty">{{if .Data.Filter.Query}}{{t "vuln.empty.noMatch"}}{{else}}{{$wait := ""}}{{range .Data.Feeds}}{{if and .Relevant .LastSuccess.IsZero}}{{$wait = .Name}}{{break}}{{end}}{{end}}{{if $wait}}{{t "vuln.empty.waitingFeed" $wait}}{{else}}{{t "vuln.empty.none"}}{{end}}{{end}}</div>
   {{end}}
 </div>
 {{end}}

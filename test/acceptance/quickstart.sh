@@ -15,7 +15,7 @@ for _ in $(seq 1 60); do curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1
 curl -fsS http://127.0.0.1:8080/healthz || fail "server not healthy"
 
 echo "== README step 2 (headless variant): create an enrolment token"
-OUT=$(docker compose exec -T sentrix sentrix-server token create --note quickstart)
+OUT=$(docker compose exec -T -e SENTRIX_LANGUAGE=en sentrix sentrix-server token create --note quickstart)
 echo "$OUT"
 TOKEN=$(echo "$OUT" | awk '/^token:/{print $2}'); FP=$(echo "$OUT" | awk '/^ca fingerprint:/{print $3}')
 

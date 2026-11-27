@@ -6,3 +6,4 @@ gateway_listen: ":8443"
 gateway_url: "https://localhost:8443"   # URL agents use to reach this server
 gateway_hosts: ["localhost", "127.0.0.1"]
 agent_dir: /usr/share/sentrix/agents
+language: tr   # default UI/notification/CLI language: tr | en (users can pick their own in the UI)

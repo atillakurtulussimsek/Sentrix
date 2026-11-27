@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,20 +13,21 @@ import (
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
 )
 
+// settingsSection is a settings tab; its label is the catalog key "settings.nav.<Key>".
 type settingsSection struct {
-	Key, Label, Href string
-	Admin            bool
+	Key, Href string
+	Admin     bool
 }
 
 var settingsSections = []settingsSection{
-	{"users", "Users", "/settings/users", true},
-	{"enrollment", "Enrolment", "/settings/enrollment", true},
-	{"channels", "Notification channels", "/settings/channels", true},
-	{"policies", "Patch policies", "/settings/policies", true},
-	{"hooks", "Snapshot hooks", "/settings/hooks", true},
-	{"feeds", "Vulnerability feeds", "/settings/feeds", true},
-	{"tokens", "API tokens", "/settings/tokens", false},
-	{"account", "My account", "/settings/account", false},
+	{"users", "/settings/users", true},
+	{"enrollment", "/settings/enrollment", true},
+	{"channels", "/settings/channels", true},
+	{"policies", "/settings/policies", true},
+	{"hooks", "/settings/hooks", true},
+	{"feeds", "/settings/feeds", true},
+	{"tokens", "/settings/tokens", false},
+	{"account", "/settings/account", false},
 }
 
 func settingsData(section string, extra map[string]any) map[string]any {
@@ -42,7 +44,7 @@ func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request) {
 		s.httpError(w, r, 500, s.t(r, "error.internal"))
 		return
 	}
-	s.renderPage(w, r, 200, "settings_users", "Users", settingsData("users", map[string]any{"Users": users}))
+	s.renderPage(w, r, 200, "settings_users", s.t(r, "settings.nav.users"), settingsData("users", map[string]any{"Users": users}))
 }
 
 func validRole(r string) bool {
@@ -58,25 +60,25 @@ func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/settings/users", http.StatusSeeOther)
 	}
 	if !validUsername(name) || !validRole(role) {
-		back("error", "Invalid username or role.")
+		back("error", s.t(r, "users.invalid"))
 		return
 	}
-	if err := auth.ValidatePassword(pw); err != nil {
-		back("error", err.Error())
+	if msg := s.passwordProblem(r, pw); msg != "" {
+		back("error", msg)
 		return
 	}
 	hash, err := auth.HashPassword(pw)
 	if err != nil {
-		back("error", "internal error")
+		back("error", s.t(r, "error.internal"))
 		return
 	}
 	u, err := s.db.CreateUser(r.Context(), name, hash, role)
 	if err != nil {
-		back("error", "Could not create user (name taken?).")
+		back("error", s.t(r, "users.createFailed"))
 		return
 	}
 	s.auditReq(r, "user.create", u.ID, fmt.Sprintf("username=%s role=%s", name, role))
-	back("ok", "User "+name+" created.")
+	back("ok", s.t(r, "users.created", name))
 }
 
 // lastAdminGuard refuses changes that would leave no enabled admin.
@@ -113,52 +115,55 @@ func (s *Server) handleUserRole(w http.ResponseWriter, r *http.Request) {
 	s.userAction(w, r, func(u *store.User) (string, error) {
 		role := r.PostFormValue("role")
 		if !validRole(role) {
-			return "", fmt.Errorf("invalid role")
+			return "", errors.New(s.t(r, "users.invalidRole"))
 		}
 		if role != store.RoleAdmin && !s.lastAdminGuard(r, *u) {
-			return "", fmt.Errorf("cannot demote the last admin")
+			return "", errors.New(s.t(r, "users.lastAdminDemote"))
 		}
 		u.Role = role
 		if err := s.db.UpdateUser(r.Context(), *u); err != nil {
-			return "", err
+			s.log.Error("update user", "err", err)
+			return "", errors.New(s.t(r, "error.internal"))
 		}
 		_ = s.db.DeleteUserSessions(r.Context(), u.ID)
 		s.auditReq(r, "user.role", u.ID, "username="+u.Username+" role="+role)
-		return "Role of " + u.Username + " set to " + role + ".", nil
+		return s.t(r, "users.roleSet", u.Username, s.t(r, "role."+role)), nil
 	})
 }
 
 func (s *Server) handleUserToggle(w http.ResponseWriter, r *http.Request) {
 	s.userAction(w, r, func(u *store.User) (string, error) {
 		if u.ID == authFrom(r.Context()).User.ID {
-			return "", fmt.Errorf("you cannot disable yourself")
+			return "", errors.New(s.t(r, "users.selfDisable"))
 		}
 		if !u.Disabled && !s.lastAdminGuard(r, *u) {
-			return "", fmt.Errorf("cannot disable the last admin")
+			return "", errors.New(s.t(r, "users.lastAdminDisable"))
 		}
 		u.Disabled = !u.Disabled
 		if err := s.db.UpdateUser(r.Context(), *u); err != nil {
-			return "", err
+			s.log.Error("update user", "err", err)
+			return "", errors.New(s.t(r, "error.internal"))
 		}
 		_ = s.db.DeleteUserSessions(r.Context(), u.ID)
 		s.auditReq(r, "user.toggle", u.ID, fmt.Sprintf("username=%s disabled=%v", u.Username, u.Disabled))
-		return "User updated.", nil
+		return s.t(r, "users.updated"), nil
 	})
 }
 
 func (s *Server) handleUserDelete(w http.ResponseWriter, r *http.Request) {
 	s.userAction(w, r, func(u *store.User) (string, error) {
 		if u.ID == authFrom(r.Context()).User.ID {
-			return "", fmt.Errorf("you cannot delete yourself")
+			return "", errors.New(s.t(r, "users.selfDelete"))
 		}
 		if !s.lastAdminGuard(r, *u) {
-			return "", fmt.Errorf("cannot delete the last admin")
+			return "", errors.New(s.t(r, "users.lastAdminDelete"))
 		}
 		if err := s.db.DeleteUser(r.Context(), u.ID); err != nil {
-			return "", err
+			s.log.Error("delete user", "err", err)
+			return "", errors.New(s.t(r, "error.internal"))
 		}
 		s.auditReq(r, "user.delete", u.ID, "username="+u.Username)
-		return "User " + u.Username + " deleted.", nil
+		return s.t(r, "users.deleted", u.Username), nil
 	})
 }
 
@@ -181,7 +186,7 @@ func (s *Server) enrollmentPage(w http.ResponseWriter, r *http.Request, status i
 	if newTok != nil {
 		d["NewToken"] = newTok
 	}
-	s.renderPage(w, r, status, "settings_enrollment", "Enrolment", settingsData("enrollment", d))
+	s.renderPage(w, r, status, "settings_enrollment", s.t(r, "settings.nav.enrollment"), settingsData("enrollment", d))
 }
 
 func (s *Server) handleEnrollment(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +210,7 @@ func (s *Server) handleEnrollmentCreate(w http.ResponseWriter, r *http.Request) 
 	base := strings.TrimRight(s.cfg.BaseURL, "/")
 	s.enrollmentPage(w, r, 200, map[string]string{
 		"Token": tok, "Gateway": gw, "Fingerprint": s.ca.Fingerprint(),
-		"Command": fmt.Sprintf("curl -fsSL %s/install.sh | sudo sh -s -- --server %s --token %s --ca-fingerprint %s", base, gw, tok, s.ca.Fingerprint()),
+		"Command": fmt.Sprintf("curl -fsSL %s/install.sh | sudo sh -s -- --server %s --token %s --ca-fingerprint %s --lang %s", base, gw, tok, s.ca.Fingerprint(), s.cfg.Language),
 	})
 }
 

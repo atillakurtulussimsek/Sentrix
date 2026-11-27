@@ -3,6 +3,7 @@
 # Verifies M1 (enrol, online, offline) and M2 (all collectors, rollups, RSS).
 # Used by CI (ubuntu-latest); run manually with: sudo -E test/acceptance/linux-local.sh
 set -euo pipefail
+export SENTRIX_LANGUAGE=en   # this script parses CLI output (token create, patch plan)
 cd "$(dirname "$0")/../.."
 BIN=${BIN:-bin}
 WORK=$(mktemp -d)

@@ -1,3 +1,5 @@
+[Türkçe](tr/faq.md) · **English**
+
 # FAQ
 
 **Does Sentrix send my package lists anywhere?**
@@ -39,3 +41,8 @@ Agents only make outbound HTTPS connections to port 8443 of the server. Nothing 
 
 **Air-gapped?**
 Mirror the feed files and point `feeds.*_url` to your mirror; agents are downloaded from the server itself.
+
+**Can I use the UI in English?**
+Yes. Each user picks their language from the picker in the sidebar, on the sign-in page or in *Account* settings.
+Change the server default (also used for notifications) with `SENTRIX_LANGUAGE=en`; see
+[configuration](configuration.md#language).

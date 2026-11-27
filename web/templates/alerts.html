@@ -2,58 +2,58 @@
 {{define "content"}}
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
   <h1 class="text-2xl font-semibold tracking-tight">{{t "nav.alerts"}}</h1>
-  {{if can .User "admin"}}<a href="/settings/channels" class="btn-secondary">Notification channels</a>{{end}}
+  {{if can .User "admin"}}<a href="/settings/channels" class="btn-secondary">{{t "alert.channels"}}</a>{{end}}
 </div>
-{{if not .Data.Channels}}<div class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">No notification channel is configured — alerts are only shown here.{{if can .User "admin"}} <a href="/settings/channels" class="underline">Add a channel</a>.{{end}}</div>{{end}}
+{{if not .Data.Channels}}<div class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">{{t "alert.noChannel"}}{{if can .User "admin"}} <a href="/settings/channels" class="underline">{{t "alert.addChannel"}}</a>.{{end}}</div>{{end}}
 <div class="grid gap-6 lg:grid-cols-2">
   <section class="card">
-    <div class="card-header"><h2>Firing</h2><span class="text-xs text-zinc-500">{{len .Data.Firing}}</span></div>
+    <div class="card-header"><h2>{{t "alert.firing"}}</h2><span class="text-xs text-zinc-500">{{len .Data.Firing}}</span></div>
     {{template "alertlist" .Data.Firing}}
   </section>
   <section class="card">
-    <div class="card-header"><h2>Pending</h2><span class="text-xs text-zinc-500">waiting for the “for” duration</span></div>
+    <div class="card-header"><h2>{{t "alert.pending"}}</h2><span class="text-xs text-zinc-500">{{t "alert.pendingHint"}}</span></div>
     {{template "alertlist" .Data.Pending}}
   </section>
 </div>
 <section class="card mt-6">
-  <div class="card-header"><h2>Recently resolved</h2></div>
+  <div class="card-header"><h2>{{t "alert.recentlyResolved"}}</h2></div>
   {{template "alertlist" .Data.Resolved}}
 </section>
 
 <section class="card mt-6 overflow-x-auto" id="rules">
-  <div class="card-header"><h2>Rules</h2></div>
-  <table class="table table-compact"><thead><tr><th>Rule</th><th>Condition</th><th>Severity</th><th>For</th><th>Cooldown</th><th></th></tr></thead><tbody>
+  <div class="card-header"><h2>{{t "alert.rules"}}</h2></div>
+  <table class="table table-compact"><thead><tr><th>{{t "alert.col.rule"}}</th><th>{{t "alert.col.condition"}}</th><th>{{t "common.severity"}}</th><th>{{t "alert.col.for"}}</th><th>{{t "alert.col.cooldown"}}</th><th></th></tr></thead><tbody>
   {{range .Data.Rules}}<tr class="{{if not .Enabled}}opacity-50{{end}}">
-    <td class="font-medium">{{.Name}} <span class="badge badge-muted">{{.Kind}}</span></td><td class="text-xs"><code>{{.Desc}}</code></td>
-    <td><span class="badge {{if eq .Severity "critical"}}badge-offline{{else if eq .Severity "warning"}}badge-warn{{end}}">{{.Severity}}</span></td>
+    <td class="font-medium">{{.Name}} <span class="badge badge-muted">{{t (printf "alert.kind.%s" .Kind)}}</span></td><td class="text-xs"><code>{{.Desc}}</code></td>
+    <td><span class="badge {{if eq .Severity "critical"}}badge-offline{{else if eq .Severity "warning"}}badge-warn{{end}}">{{t (printf "alert.severity.%s" .Severity)}}</span></td>
     <td class="text-xs">{{.For}}</td><td class="text-xs">{{.Cooldown}}</td>
-    <td class="text-right">{{if can $.User "admin"}}<form method="post" action="/alerts/rules/{{.ID}}/toggle" class="inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs hover:underline">{{if .Enabled}}disable{{else}}enable{{end}}</button></form>
-      <form method="post" action="/alerts/rules/{{.ID}}/delete" class="ml-2 inline" data-confirm="Delete rule {{.Name}}?"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-red-600 hover:underline">delete</button></form>{{end}}</td>
+    <td class="text-right">{{if can $.User "admin"}}<form method="post" action="/alerts/rules/{{.ID}}/toggle" class="inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs hover:underline">{{if .Enabled}}{{t "alert.disable"}}{{else}}{{t "alert.enable"}}{{end}}</button></form>
+      <form method="post" action="/alerts/rules/{{.ID}}/delete" class="ml-2 inline" data-confirm="{{t "alert.deleteConfirm" .Name}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="text-xs text-red-600 hover:underline">{{t "alert.delete"}}</button></form>{{end}}</td>
   </tr>{{end}}</tbody></table>
 </section>
 
 {{if can .User "admin"}}
 <form method="post" action="/alerts/rules" class="card mt-6 grid gap-3 p-5 md:grid-cols-4">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <h2 class="text-sm font-semibold md:col-span-4">Add rule</h2>
-  <label class="block"><span class="label">Name</span><input name="name" class="input mt-1"></label>
-  <label class="block"><span class="label">Kind</span><select name="kind" class="input mt-1"><option value="threshold">threshold (metric)</option><option value="state">state</option><option value="vulnerability">vulnerability</option><option value="patch">patch result</option></select></label>
-  <label class="block"><span class="label">Severity</span><select name="severity" class="input mt-1"><option>warning</option><option>critical</option><option>info</option></select></label>
-  <label class="block"><span class="label">Host group (optional)</span><input name="group" class="input mt-1"></label>
-  <label class="block"><span class="label">Metric</span><input name="metric" class="input mt-1 font-mono" placeholder="disk.used_pct"></label>
-  <label class="block"><span class="label">Labels (exact, optional)</span><input name="labels" class="input mt-1 font-mono" placeholder="mount=/"></label>
-  <div class="grid grid-cols-2 gap-2"><label class="block"><span class="label">Op</span><select name="op" class="input mt-1"><option>&gt;</option><option>&gt;=</option><option>&lt;</option><option>&lt;=</option></select></label>
-    <label class="block"><span class="label">Value</span><input name="value" type="number" step="any" class="input mt-1" value="90"></label></div>
-  <label class="block"><span class="label">State condition</span><select name="condition" class="input mt-1"><option value="">—</option><option value="agent_offline">agent offline</option><option value="failed_units">failed units</option><option value="service_down">watched service down</option><option value="reboot_pending">reboot pending</option></select></label>
-  <label class="block"><span class="label">For</span><input name="for" class="input mt-1" value="5m"></label>
-  <label class="block"><span class="label">Cooldown</span><input name="cooldown" class="input mt-1" value="6h"></label>
-  <div class="space-y-1 text-sm"><span class="label">Vulnerability</span>
-    <label class="flex items-center gap-2"><input type="checkbox" name="only_kev" value="1"> only KEV</label>
-    <select name="min_severity" class="input input-sm"><option value="">any severity</option><option>critical</option><option>high</option></select></div>
-  <div class="space-y-1 text-sm"><span class="label">Channels</span>{{range .Data.Channels}}<label class="flex items-center gap-2"><input type="checkbox" name="channels" value="{{.ID}}"> {{.Name}}</label>{{else}}<p class="text-xs text-zinc-500">none (all enabled channels)</p>{{end}}</div>
-  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="only_failed" value="1"> patch: only failures</label>
-  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="enabled" value="1" checked> enabled</label>
-  <div class="md:col-span-4"><button class="btn-primary">Add rule</button></div>
+  <h2 class="text-sm font-semibold md:col-span-4">{{t "alert.addRule"}}</h2>
+  <label class="block"><span class="label">{{t "common.name"}}</span><input name="name" class="input mt-1"></label>
+  <label class="block"><span class="label">{{t "alert.form.kind"}}</span><select name="kind" class="input mt-1"><option value="threshold">{{t "alert.kindOption.threshold"}}</option><option value="state">{{t "alert.kindOption.state"}}</option><option value="vulnerability">{{t "alert.kindOption.vulnerability"}}</option><option value="patch">{{t "alert.kindOption.patch"}}</option></select></label>
+  <label class="block"><span class="label">{{t "common.severity"}}</span><select name="severity" class="input mt-1"><option value="warning">{{t "alert.severity.warning"}}</option><option value="critical">{{t "alert.severity.critical"}}</option><option value="info">{{t "alert.severity.info"}}</option></select></label>
+  <label class="block"><span class="label">{{t "alert.form.group"}}</span><input name="group" class="input mt-1"></label>
+  <label class="block"><span class="label">{{t "alert.form.metric"}}</span><input name="metric" class="input mt-1 font-mono" placeholder="disk.used_pct"></label>
+  <label class="block"><span class="label">{{t "alert.form.labels"}}</span><input name="labels" class="input mt-1 font-mono" placeholder="mount=/"></label>
+  <div class="grid grid-cols-2 gap-2"><label class="block"><span class="label">{{t "alert.form.op"}}</span><select name="op" class="input mt-1"><option>&gt;</option><option>&gt;=</option><option>&lt;</option><option>&lt;=</option></select></label>
+    <label class="block"><span class="label">{{t "alert.form.value"}}</span><input name="value" type="number" step="any" class="input mt-1" value="90"></label></div>
+  <label class="block"><span class="label">{{t "alert.form.stateCondition"}}</span><select name="condition" class="input mt-1"><option value="">—</option><option value="agent_offline">{{t "alert.condition.agent_offline"}}</option><option value="failed_units">{{t "alert.condition.failed_units"}}</option><option value="service_down">{{t "alert.condition.service_down"}}</option><option value="reboot_pending">{{t "alert.condition.reboot_pending"}}</option></select></label>
+  <label class="block"><span class="label">{{t "alert.col.for"}}</span><input name="for" class="input mt-1" value="5m"></label>
+  <label class="block"><span class="label">{{t "alert.col.cooldown"}}</span><input name="cooldown" class="input mt-1" value="6h"></label>
+  <div class="space-y-1 text-sm"><span class="label">{{t "vuln.col.vulnerability"}}</span>
+    <label class="flex items-center gap-2"><input type="checkbox" name="only_kev" value="1"> {{t "alert.form.onlyKev"}}</label>
+    <select name="min_severity" class="input input-sm"><option value="">{{t "alert.form.anySeverity"}}</option><option value="critical">{{t "severity.critical"}}</option><option value="high">{{t "severity.high"}}</option></select></div>
+  <div class="space-y-1 text-sm"><span class="label">{{t "alert.form.channels"}}</span>{{range .Data.Channels}}<label class="flex items-center gap-2"><input type="checkbox" name="channels" value="{{.ID}}"> {{.Name}}</label>{{else}}<p class="text-xs text-zinc-500">{{t "alert.form.noChannels"}}</p>{{end}}</div>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="only_failed" value="1"> {{t "alert.form.onlyFailed"}}</label>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="enabled" value="1" checked> {{t "alert.form.enabled"}}</label>
+  <div class="md:col-span-4"><button class="btn-primary">{{t "alert.addRule"}}</button></div>
 </form>
 {{end}}
 {{end}}
@@ -64,7 +64,7 @@
     <span class="dot mt-1.5 {{if eq .Status "resolved"}}dot-ok{{else if eq .Severity "critical"}}dot-bad{{else if eq .Severity "warning"}}dot-warn{{else}}dot-info{{end}}"></span>
     <div class="min-w-0 flex-1"><div class="font-medium">{{.Rule}}{{if .Hostname}} · <a href="/hosts/{{.HostID}}" class="hover:underline">{{.Hostname}}</a>{{end}}</div>
       <div class="truncate text-xs text-zinc-500" title="{{.Message}}">{{.Message}}</div></div>
-    <div class="text-right text-xs text-zinc-500">{{if eq .Status "resolved"}}resolved {{reltime .ResolvedAt}}{{else if eq .Status "firing"}}since {{reltime .FiredAt}}{{else}}pending {{reltime .StartedAt}}{{end}}</div>
+    <div class="text-right text-xs text-zinc-500">{{if eq .Status "resolved"}}{{t "alert.resolvedAt" (reltime .ResolvedAt)}}{{else if eq .Status "firing"}}{{t "alert.firingSince" (reltime .FiredAt)}}{{else}}{{t "alert.pendingSince" (reltime .StartedAt)}}{{end}}</div>
   </li>{{end}}</ul>
-{{else}}<div class="empty">Nothing here.</div>{{end}}
+{{else}}<div class="empty">{{t "alert.empty"}}</div>{{end}}
 {{end}}

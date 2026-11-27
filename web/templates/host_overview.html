@@ -6,12 +6,12 @@
   <div class="flex gap-1 rounded-md border border-zinc-200 p-0.5 text-xs dark:border-zinc-800" id="range-picker">
     {{range list "1h" "6h" "24h" "7d" "30d"}}<button type="button" data-range="{{.}}" class="rounded px-2.5 py-1 font-medium {{if eq . "1h"}}bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900{{else}}text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800{{end}}">{{.}}</button>{{end}}
   </div>
-  <span class="flex items-center gap-1.5 text-xs text-zinc-500"><span class="dot dot-ok animate-pulse" id="live-dot"></span> live</span>
+  <span class="flex items-center gap-1.5 text-xs text-zinc-500"><span class="dot dot-ok animate-pulse" id="live-dot"></span> {{t "host.live"}}</span>
 </div>
 <div class="grid gap-4 lg:grid-cols-2" id="charts" data-host="{{.Data.Host.ID}}">
   {{range .Data.Charts}}
   <section class="card p-4">
-    <div class="mb-2 flex items-baseline justify-between"><h3 class="text-sm font-semibold">{{.Title}}</h3><span class="text-xs tabular-nums text-zinc-500" data-current="{{.ID}}"></span></div>
+    <div class="mb-2 flex items-baseline justify-between"><h3 class="text-sm font-semibold">{{t (printf "host.chart.%s" .ID)}}</h3><span class="text-xs tabular-nums text-zinc-500" data-current="{{.ID}}"></span></div>
     <div class="chart h-48" data-chart="{{.ID}}" data-metrics="{{.Metrics}}" data-unit="{{.Unit}}" data-labels="{{.ByLabel}}"></div>
   </section>
   {{end}}
@@ -24,34 +24,34 @@
 
 {{define "hoststate"}}
 <section class="card">
-  <div class="card-header"><h2>Top processes</h2><span class="text-xs text-zinc-500">{{.State.ProcessCount}} processes</span></div>
+  <div class="card-header"><h2>{{t "host.topProcesses"}}</h2><span class="text-xs text-zinc-500">{{t "host.processCount" .State.ProcessCount}}</span></div>
   {{if .State.TopCPU}}
   <table class="table table-compact">
-    <thead><tr><th>PID</th><th>Name</th><th>User</th><th class="text-right">CPU</th><th class="text-right">RSS</th></tr></thead>
+    <thead><tr><th>PID</th><th>{{t "common.name"}}</th><th>{{t "common.user"}}</th><th class="text-right">CPU</th><th class="text-right">RSS</th></tr></thead>
     <tbody>{{range .State.TopCPU}}<tr><td class="tabular-nums text-zinc-500">{{.PID}}</td><td class="font-mono text-xs">{{.Name}}</td><td>{{.User}}</td><td class="text-right tabular-nums">{{printf "%.1f" .CPUPercent}}%</td><td class="text-right tabular-nums">{{bytes .RSSBytes}}</td></tr>{{end}}</tbody>
   </table>
-  {{else}}<div class="empty">No process data yet.</div>{{end}}
+  {{else}}<div class="empty">{{t "host.noProcesses"}}</div>{{end}}
 </section>
 <section class="card">
-  <div class="card-header"><h2>System</h2></div>
+  <div class="card-header"><h2>{{t "host.system"}}</h2></div>
   <dl class="grid grid-cols-3 gap-x-4 gap-y-3 px-5 py-4 text-sm">
-    <dt class="text-zinc-500">Uptime</dt><dd class="col-span-2">{{duration .State.Uptime}}</dd>
-    <dt class="text-zinc-500">Reboot</dt><dd class="col-span-2">{{if .State.Reboot.Required}}<span class="badge badge-warn">required</span> <span class="text-xs text-zinc-500">{{join .State.Reboot.Reasons "; "}}</span>{{else}}not required{{end}}</dd>
-    <dt class="text-zinc-500">Kernel</dt><dd class="col-span-2 font-mono text-xs">{{.State.Reboot.RunningKernel}}{{if and .State.Reboot.NewestKernel (ne .State.Reboot.NewestKernel .State.Reboot.RunningKernel)}} → {{.State.Reboot.NewestKernel}}{{end}}</dd>
-    <dt class="text-zinc-500">Failed units</dt><dd class="col-span-2">{{if .State.FailedUnits}}{{range .State.FailedUnits}}<span class="badge badge-offline mr-1">{{.}}</span>{{end}}{{else}}none{{end}}</dd>
-    <dt class="text-zinc-500">Watched services</dt><dd class="col-span-2">{{range .State.Services}}<span class="badge {{if eq .ActiveState "active"}}badge-online{{else}}badge-offline{{end}} mr-1">{{.Name}}: {{.ActiveState}}</span>{{else}}–{{end}}</dd>
-    {{range .State.Certificates}}<dt class="text-zinc-500">TLS {{.Endpoint}}</dt><dd class="col-span-2">{{if .Error}}<span class="text-red-600">{{.Error}}</span>{{else}}expires {{reltime .NotAfter}}{{end}}</dd>{{end}}
+    <dt class="text-zinc-500">{{t "host.uptime"}}</dt><dd class="col-span-2">{{duration .State.Uptime}}</dd>
+    <dt class="text-zinc-500">{{t "host.reboot"}}</dt><dd class="col-span-2">{{if .State.Reboot.Required}}<span class="badge badge-warn">{{t "host.required"}}</span> <span class="text-xs text-zinc-500">{{join .State.Reboot.Reasons "; "}}</span>{{else}}{{t "host.notRequired"}}{{end}}</dd>
+    <dt class="text-zinc-500">{{t "host.kernel"}}</dt><dd class="col-span-2 font-mono text-xs">{{.State.Reboot.RunningKernel}}{{if and .State.Reboot.NewestKernel (ne .State.Reboot.NewestKernel .State.Reboot.RunningKernel)}} → {{.State.Reboot.NewestKernel}}{{end}}</dd>
+    <dt class="text-zinc-500">{{t "host.failedUnits"}}</dt><dd class="col-span-2">{{if .State.FailedUnits}}{{range .State.FailedUnits}}<span class="badge badge-offline mr-1">{{.}}</span>{{end}}{{else}}{{t "host.none"}}{{end}}</dd>
+    <dt class="text-zinc-500">{{t "host.watchedServices"}}</dt><dd class="col-span-2">{{range .State.Services}}<span class="badge {{if eq .ActiveState "active"}}badge-online{{else}}badge-offline{{end}} mr-1">{{.Name}}: {{.ActiveState}}</span>{{else}}–{{end}}</dd>
+    {{range .State.Certificates}}<dt class="text-zinc-500">TLS {{.Endpoint}}</dt><dd class="col-span-2">{{if .Error}}<span class="text-red-600">{{.Error}}</span>{{else}}{{t "host.certExpires" (reltime .NotAfter)}}{{end}}</dd>{{end}}
   </dl>
 </section>
 {{if .State.DockerPresent}}
 <section class="card lg:col-span-2">
-  <div class="card-header"><h2>Containers</h2><span class="text-xs text-zinc-500">{{len .State.Containers}}</span></div>
+  <div class="card-header"><h2>{{t "host.containers"}}</h2><span class="text-xs text-zinc-500">{{len .State.Containers}}</span></div>
   {{if .State.Containers}}
   <table class="table table-compact">
-    <thead><tr><th>Name</th><th>Image</th><th>State</th><th class="text-right">Restarts</th><th class="text-right">CPU</th><th class="text-right">Memory</th></tr></thead>
+    <thead><tr><th>{{t "common.name"}}</th><th>{{t "host.col.image"}}</th><th>{{t "host.col.state"}}</th><th class="text-right">{{t "host.col.restarts"}}</th><th class="text-right">CPU</th><th class="text-right">{{t "host.col.memory"}}</th></tr></thead>
     <tbody>{{range .State.Containers}}<tr><td class="font-medium">{{.Name}}</td><td class="font-mono text-xs text-zinc-500">{{.Image}}</td><td><span class="badge {{if eq .State "running"}}badge-online{{else}}badge-offline{{end}}">{{.State}}</span></td><td class="text-right tabular-nums {{if gt .RestartCount 0}}text-amber-600{{end}}">{{.RestartCount}}</td><td class="text-right tabular-nums">{{printf "%.1f" .CPUPercent}}%</td><td class="text-right tabular-nums">{{bytes .MemBytes}}</td></tr>{{end}}</tbody>
   </table>
-  {{else}}<div class="empty">No containers.</div>{{end}}
+  {{else}}<div class="empty">{{t "host.noContainers"}}</div>{{end}}
 </section>
 {{end}}
 {{end}}

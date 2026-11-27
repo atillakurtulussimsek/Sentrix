@@ -1,0 +1,21 @@
+{
+  "orch.planCancelled": "plan cancelled",
+  "orch.dryTimeout": "dry run timed out (host offline?)",
+  "orch.notStartedEarlierFailed": "not started: an earlier host failed",
+  "orch.notStartedWindowClosed": "not started: maintenance window closed",
+  "orch.hostsFailed": "%d host(s) failed; rollout stopped",
+  "orch.windowClosedEarly": "maintenance window closed before all hosts were patched",
+  "orch.snapshotTimeout": "snapshot step timed out",
+  "orch.queueReboot": "queue reboot: %s",
+  "orch.patchFailed": "patch failed: %s",
+  "orch.patchTimeout": "patch command timed out",
+  "orch.noComeback": "host did not come back online after reboot",
+  "orch.verifyTimeout": "verification timed out (agent offline or no post-patch inventory)",
+  "orch.servicesDown": "watched services not active after patch: %s",
+  "orch.snapshotRequiredFailed": "pre-patch snapshot failed, host not patched: %s",
+  "orch.snapshotOptionalFailed": "snapshot failed (not required, continuing): %s",
+  "orch.defaultName": "%s patch · %d host(s) · %s",
+  "orch.scope.security": "security",
+  "orch.scope.packages": "packages",
+  "orch.scope.all": "all"
+}

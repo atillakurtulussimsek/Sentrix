@@ -53,6 +53,9 @@ Last updated: 2026-11-27
 - No Linux VM on the dev Mac: Linux acceptance runs in GitHub Actions (`acceptance` job, `test/acceptance/linux-local.sh`).
 - Docker is not installed on the build host: `make e2e` (multi-distro containers) cannot be executed here.
 
+## Post-0.1.0
+- Turkish localization (default) with per-user language, localized notifications/CLIs/installer and Turkish docs — done, `make build test lint` green, verified in the browser (TR/EN switch, no untranslated UI text on all pages).
+
 ## Next up
-- Owner: review and publish v0.1.0 (push tag `v0.1.0`).
+- Owner: publish the v0.1.0 draft release on GitHub.
 - Roadmap items listed in the final summary above.

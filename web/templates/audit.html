@@ -2,17 +2,17 @@
 {{define "content"}}
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
   <h1 class="text-2xl font-semibold tracking-tight">{{t "nav.audit"}}</h1>
-  <form class="flex gap-2"><input type="search" name="target" value="{{.Data.Target}}" placeholder="Filter by target ID" class="input w-72"><button class="btn-secondary">Filter</button></form>
+  <form class="flex gap-2"><input type="search" name="target" value="{{.Data.Target}}" placeholder="{{t "audit.filterPlaceholder"}}" class="input w-72"><button class="btn-secondary">{{t "common.filter"}}</button></form>
 </div>
 <div class="card overflow-x-auto">
   {{if .Data.Entries}}
   <table class="table table-compact">
-    <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Detail</th></tr></thead>
-    <tbody>{{range .Data.Entries}}
-    <tr><td class="whitespace-nowrap tabular-nums text-zinc-500">{{fmtTime .TS}}</td><td class="whitespace-nowrap">{{.Actor}}</td><td><code class="text-xs">{{.Action}}</code></td>
+    <thead><tr><th>{{t "common.time"}}</th><th>{{t "audit.col.actor"}}</th><th>{{t "audit.col.action"}}</th><th>{{t "audit.col.target"}}</th><th>{{t "audit.col.detail"}}</th></tr></thead>
+    <tbody>{{range .Data.Entries}}{{$ak := printf "audit.action.%s" .Action}}{{$av := t $ak}}
+    <tr><td class="whitespace-nowrap tabular-nums text-zinc-500">{{fmtTime .TS}}</td><td class="whitespace-nowrap">{{.Actor}}</td><td>{{if eq $av $ak}}<code class="text-xs">{{.Action}}</code>{{else}}<span title="{{.Action}}">{{$av}}</span>{{end}}</td>
       <td class="font-mono text-xs"><a href="/audit?target={{.Target}}" class="hover:underline">{{.Target}}</a></td><td class="max-w-xl truncate text-zinc-600 dark:text-zinc-400" title="{{.Detail}}">{{.Detail}}</td></tr>
     {{end}}</tbody>
   </table>
-  {{else}}<div class="empty">No audit entries.</div>{{end}}
+  {{else}}<div class="empty">{{t "audit.empty"}}</div>{{end}}
 </div>
 {{end}}

@@ -16,27 +16,13 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/atillakurtulussimsek/Sentrix/internal/cli"
+	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
 	"github.com/atillakurtulussimsek/Sentrix/internal/version"
 )
 
-const usage = `Usage: sentrix <command> [flags]
-
-  login --server URL --token TOKEN        save server URL and API token
-  hosts                                   list hosts
-  cve list [--severity S] [--kev] [--fixable] [--q TEXT]
-                                          fleet vulnerabilities (S = minimum: low|medium|high|critical)
-  patch list                              list patch plans
-  patch plan (--hosts a,b | --group G) [--scope security|packages|all] [--packages p1,p2]
-             [--reboot never|if_required|always] [--canary N] [--parallel N] [--no-wait]
-                                          create a plan and show its dry run
-  patch apply PLAN_ID --approve [--no-wait]
-                                          approve a plan and follow it until finished
-  patch status PLAN_ID                    show a plan
-  patch cancel PLAN_ID                    cancel a plan
-  version
-
-Environment: SENTRIX_URL and SENTRIX_TOKEN override the saved login.
-`
+// tr translates CLI messages; main binds it to the resolved language.
+var tr = cli.Translator(i18n.DefaultLang)
 
 type cliConfig struct {
 	Server string `json:"server"`
@@ -72,7 +58,7 @@ type client struct {
 
 func (c *client) do(method, path string, body, out any) error {
 	if c.cfg.Server == "" || c.cfg.Token == "" {
-		return errors.New("not logged in: run 'sentrix login --server URL --token TOKEN' or set SENTRIX_URL/SENTRIX_TOKEN")
+		return errors.New(tr("cli.sentrix.notLoggedIn"))
 	}
 	var rd io.Reader
 	if body != nil {
@@ -108,15 +94,17 @@ func (c *client) do(method, path string, body, out any) error {
 }
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+	lang, args := cli.SplitLangFlag(os.Args[1:])
+	tr = cli.Translator(cli.ResolveLang(lang, ""))
+	if err := run(args); err != nil {
+		fmt.Fprintln(os.Stderr, tr("cli.error", err))
 		os.Exit(1)
 	}
 }
 
 func run(args []string) error {
-	if len(args) == 0 {
-		fmt.Print(usage)
+	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
+		fmt.Print(tr("cli.sentrix.usage"))
 		return nil
 	}
 	c := &client{cfg: loadConfig(), http: &http.Client{Timeout: 60 * time.Second}}
@@ -126,8 +114,8 @@ func run(args []string) error {
 		return nil
 	case "login":
 		fs := flag.NewFlagSet("login", flag.ExitOnError)
-		srv := fs.String("server", "", "server URL, e.g. https://sentrix.example.com")
-		tok := fs.String("token", "", "API token (Settings → API tokens)")
+		srv := fs.String("server", "", tr("cli.sentrix.flag.server"))
+		tok := fs.String("token", "", tr("cli.sentrix.flag.token"))
 		_ = fs.Parse(args[1:])
 		c.cfg = cliConfig{Server: *srv, Token: *tok}
 		var me map[string]string
@@ -141,7 +129,7 @@ func run(args []string) error {
 		if err := os.WriteFile(configPath(), b, 0o600); err != nil {
 			return err
 		}
-		fmt.Printf("logged in as %s (%s); saved to %s\n", me["username"], me["role"], configPath())
+		fmt.Println(tr("cli.sentrix.loggedIn", me["username"], me["role"], configPath()))
 		return nil
 	case "hosts":
 		var hosts []map[string]any
@@ -149,20 +137,20 @@ func run(args []string) error {
 			return err
 		}
 		tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(tw, "HOSTNAME\tSTATUS\tOS\tGROUP\tUPDATES\tSECURITY\tRISK\tID")
+		fmt.Fprintln(tw, tr("cli.sentrix.hostsHeader"))
 		for _, h := range hosts {
 			fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\t%v\t%.0f\t%v\n", h["hostname"], h["status"], h["os"], h["group"], h["updates"], h["security_updates"], h["risk"], h["id"])
 		}
 		return tw.Flush()
 	case "cve":
 		if len(args) < 2 || args[1] != "list" {
-			return errors.New("usage: sentrix cve list [--severity high]")
+			return errors.New(tr("cli.sentrix.usageCve"))
 		}
 		fs := flag.NewFlagSet("cve list", flag.ExitOnError)
-		sev := fs.String("severity", "", "minimum severity")
-		kev := fs.Bool("kev", false, "only known exploited")
-		fixable := fs.Bool("fixable", false, "only with a fix available")
-		q := fs.String("q", "", "filter by CVE or package")
+		sev := fs.String("severity", "", tr("cli.sentrix.flag.severity"))
+		kev := fs.Bool("kev", false, tr("cli.sentrix.flag.kev"))
+		fixable := fs.Bool("fixable", false, tr("cli.sentrix.flag.fixable"))
+		q := fs.String("q", "", tr("cli.sentrix.flag.q"))
 		_ = fs.Parse(args[2:])
 		v := url.Values{}
 		if *sev != "" {
@@ -182,28 +170,28 @@ func run(args []string) error {
 			return err
 		}
 		tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(tw, "RISK\tCVE\tSEVERITY\tCVSS\tEPSS\tKEV\tHOSTS\tFIX\tPACKAGES")
+		fmt.Fprintln(tw, tr("cli.sentrix.cveHeader"))
 		for _, r := range rows {
 			kevs := ""
 			if r["kev"] == true {
 				kevs = "KEV"
 			}
-			fix := "no"
+			fix := tr("cli.no")
 			if r["fixable"] == true {
-				fix = "yes"
+				fix = tr("cli.yes")
 			}
 			fmt.Fprintf(tw, "%.0f\t%v\t%v\t%.1f\t%.3f\t%s\t%v\t%s\t%v\n", r["risk"], r["id"], r["severity"], r["cvss"], r["epss"], kevs, r["hosts"], fix, r["packages"])
 		}
-		fmt.Fprintf(tw, "\n%d vulnerabilities\n", len(rows))
+		fmt.Fprintln(tw, "\n"+tr("cli.sentrix.vulnCount", len(rows)))
 		return tw.Flush()
 	case "patch":
 		if len(args) < 2 {
-			return errors.New("usage: sentrix patch plan|apply|status|list|cancel")
+			return errors.New(tr("cli.sentrix.usagePatch"))
 		}
 		return patchCmd(c, args[1], args[2:])
 	default:
-		fmt.Print(usage)
-		return fmt.Errorf("unknown command %q", args[0])
+		fmt.Print(tr("cli.sentrix.usage"))
+		return errors.New(tr("cli.unknownCommand", args[0]))
 	}
 }
 
@@ -238,13 +226,13 @@ type plan struct {
 }
 
 func printPlan(p plan) {
-	fmt.Printf("Plan %s — %s\nstatus: %s  scope: %s  created by: %s", p.ID, p.Name, p.Status, p.Scope, p.CreatedBy)
+	fmt.Print(tr("cli.sentrix.planHead", p.ID, p.Name, p.Status, p.Scope, p.CreatedBy))
 	if p.ApprovedBy != "" {
-		fmt.Printf("  approved by: %s", p.ApprovedBy)
+		fmt.Print(tr("cli.sentrix.planApprovedBy", p.ApprovedBy))
 	}
 	fmt.Println()
 	if p.Error != "" {
-		fmt.Println("error:", p.Error)
+		fmt.Println(tr("cli.error", p.Error))
 	}
 	for _, h := range p.Hosts {
 		fmt.Printf("\n%s  [%s]", h.Hostname, h.Status)
@@ -252,11 +240,11 @@ func printPlan(p plan) {
 			fmt.Printf("  CVEs %d → %d", h.FindingsBefore, h.FindingsAfter)
 		}
 		if h.RebootRequired {
-			fmt.Print("  (reboot required)")
+			fmt.Print(tr("cli.sentrix.rebootRequired"))
 		}
 		fmt.Println()
 		if h.Error != "" {
-			fmt.Println("  error:", h.Error)
+			fmt.Println("  " + tr("cli.error", h.Error))
 		}
 		chs := h.Changes
 		if len(chs) == 0 {
@@ -265,7 +253,7 @@ func printPlan(p plan) {
 		for _, ch := range chs {
 			from := ch.From
 			if from == "" {
-				from = "(new)"
+				from = tr("cli.sentrix.newPackage")
 			}
 			fmt.Printf("  %-40s %s → %s\n", ch.Name, from, ch.To)
 		}
@@ -283,7 +271,7 @@ func waitPlan(c *client, id string, until func(string) bool) (plan, error) {
 		}
 		time.Sleep(3 * time.Second)
 	}
-	return p, errors.New("timed out waiting for plan")
+	return p, errors.New(tr("cli.sentrix.planTimeout"))
 }
 
 func patchCmd(c *client, sub string, args []string) error {
@@ -294,22 +282,22 @@ func patchCmd(c *client, sub string, args []string) error {
 			return err
 		}
 		tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(tw, "ID\tSTATUS\tSCOPE\tCREATED\tNAME")
+		fmt.Fprintln(tw, tr("cli.sentrix.planListHeader"))
 		for _, p := range ps {
 			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", p.ID, p.Status, p.Scope, p.CreatedAt.Local().Format("2006-01-02 15:04"), p.Name)
 		}
 		return tw.Flush()
 	case "plan":
 		fs := flag.NewFlagSet("patch plan", flag.ExitOnError)
-		hosts := fs.String("hosts", "", "comma-separated host names or IDs")
-		group := fs.String("group", "", "host group")
+		hosts := fs.String("hosts", "", tr("cli.sentrix.flag.hosts"))
+		group := fs.String("group", "", tr("cli.sentrix.flag.group"))
 		scope := fs.String("scope", "security", "security|packages|all")
-		pkgs := fs.String("packages", "", "comma-separated packages (scope=packages)")
+		pkgs := fs.String("packages", "", tr("cli.sentrix.flag.packages"))
 		reboot := fs.String("reboot", "never", "never|if_required|always")
-		canary := fs.Int("canary", 1, "canary hosts patched first")
-		parallel := fs.Int("parallel", 1, "max hosts in parallel")
-		name := fs.String("name", "", "plan name")
-		noWait := fs.Bool("no-wait", false, "do not wait for the dry run")
+		canary := fs.Int("canary", 1, tr("cli.sentrix.flag.canary"))
+		parallel := fs.Int("parallel", 1, tr("cli.sentrix.flag.parallel"))
+		name := fs.String("name", "", tr("cli.sentrix.flag.planName"))
+		noWait := fs.Bool("no-wait", false, tr("cli.sentrix.flag.noWaitDryRun"))
 		_ = fs.Parse(args)
 		req := map[string]any{"name": *name, "group": *group, "scope": *scope, "reboot": *reboot, "canary": *canary, "max_parallel": *parallel,
 			"hosts": splitCSV(*hosts), "packages": splitCSV(*pkgs)}
@@ -321,27 +309,27 @@ func patchCmd(c *client, sub string, args []string) error {
 			fmt.Println(p.ID)
 			return nil
 		}
-		fmt.Fprintf(os.Stderr, "plan %s created; waiting for dry run…\n", p.ID)
+		fmt.Fprintln(os.Stderr, tr("cli.sentrix.planCreated", p.ID))
 		p, err := waitPlan(c, p.ID, func(s string) bool { return s != "dry_run" })
 		if err != nil {
 			return err
 		}
 		printPlan(p)
 		if p.Status == "ready" {
-			fmt.Printf("\nApply with: sentrix patch apply %s --approve\n", p.ID)
+			fmt.Println("\n" + tr("cli.sentrix.applyHint", p.ID))
 		}
 		return nil
 	case "apply":
 		if len(args) == 0 {
-			return errors.New("usage: sentrix patch apply PLAN_ID --approve")
+			return errors.New(tr("cli.sentrix.usageApply"))
 		}
 		id := args[0]
 		fs := flag.NewFlagSet("patch apply", flag.ExitOnError)
-		approve := fs.Bool("approve", false, "confirm that you reviewed the dry run")
-		noWait := fs.Bool("no-wait", false, "return immediately")
+		approve := fs.Bool("approve", false, tr("cli.sentrix.flag.approve"))
+		noWait := fs.Bool("no-wait", false, tr("cli.sentrix.flag.noWait"))
 		_ = fs.Parse(args[1:])
 		if !*approve {
-			return errors.New("refusing to apply without --approve (review the dry run with 'sentrix patch status " + id + "')")
+			return errors.New(tr("cli.sentrix.needApprove", id))
 		}
 		var p plan
 		if err := c.do("POST", "/api/v1/plans/"+id+"/approve", nil, &p); err != nil {
@@ -351,19 +339,19 @@ func patchCmd(c *client, sub string, args []string) error {
 			fmt.Println(p.Status)
 			return nil
 		}
-		fmt.Fprintln(os.Stderr, "approved; following progress…")
+		fmt.Fprintln(os.Stderr, tr("cli.sentrix.approved"))
 		p, err := waitPlan(c, id, func(s string) bool { return s == "done" || s == "failed" || s == "cancelled" })
 		if err != nil {
 			return err
 		}
 		printPlan(p)
 		if p.Status != "done" {
-			return fmt.Errorf("plan %s", p.Status)
+			return errors.New(tr("cli.sentrix.planEnded", p.Status))
 		}
 		return nil
 	case "status":
 		if len(args) == 0 {
-			return errors.New("usage: sentrix patch status PLAN_ID")
+			return errors.New(tr("cli.sentrix.usageStatus"))
 		}
 		var p plan
 		if err := c.do("GET", "/api/v1/plans/"+args[0], nil, &p); err != nil {
@@ -373,7 +361,7 @@ func patchCmd(c *client, sub string, args []string) error {
 		return nil
 	case "cancel":
 		if len(args) == 0 {
-			return errors.New("usage: sentrix patch cancel PLAN_ID")
+			return errors.New(tr("cli.sentrix.usageCancel"))
 		}
 		var p plan
 		if err := c.do("POST", "/api/v1/plans/"+args[0]+"/cancel", nil, &p); err != nil {
@@ -382,7 +370,7 @@ func patchCmd(c *client, sub string, args []string) error {
 		fmt.Println(p.Status)
 		return nil
 	}
-	return fmt.Errorf("unknown patch command %q", sub)
+	return errors.New(tr("cli.sentrix.unknownPatchCommand", sub))
 }
 
 func splitCSV(s string) []string {

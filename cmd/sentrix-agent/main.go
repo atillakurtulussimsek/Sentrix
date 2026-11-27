@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -13,32 +14,32 @@ import (
 	"github.com/atillakurtulussimsek/Sentrix/internal/agent"
 	"github.com/atillakurtulussimsek/Sentrix/internal/cli"
 	"github.com/atillakurtulussimsek/Sentrix/internal/config"
+	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
 	"github.com/atillakurtulussimsek/Sentrix/internal/version"
 )
 
-const usage = `Usage: sentrix-agent [--config FILE] <command>
-
-Commands:
-  run                         run the agent (default)
-  enroll --server URL --token TOKEN --ca-fingerprint SHA256
-                              enrol this host (one-time)
-  inventory [--refresh]       print this host's inventory as JSON (no server needed)
-  version                     print version
-`
+// tr translates CLI messages; run binds it to the resolved language.
+var tr = cli.Translator(i18n.DefaultLang)
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		fmt.Fprintln(os.Stderr, tr("cli.error", err))
 		os.Exit(1)
 	}
 }
 
 func run() error {
 	fs := flag.NewFlagSet("sentrix-agent", flag.ExitOnError)
-	cfgPath := fs.String("config", os.Getenv("SENTRIX_AGENT_CONFIG"), "config file (YAML)")
-	stateDir := fs.String("state-dir", "", "override state directory")
-	fs.Usage = func() { fmt.Fprint(os.Stderr, usage) }
+	tr = cli.Translator(cli.ResolveLang("", ""))
+	cfgPath := fs.String("config", os.Getenv("SENTRIX_AGENT_CONFIG"), tr("cli.flag.config"))
+	stateDir := fs.String("state-dir", "", tr("cli.agent.flag.stateDir"))
+	langFlag := fs.String("lang", "", tr("cli.flag.lang"))
+	fs.Usage = func() {
+		tr = cli.Translator(cli.ResolveLang(*langFlag, ""))
+		fmt.Fprint(os.Stderr, tr("cli.agent.usage"))
+	}
 	_ = fs.Parse(os.Args[1:])
+	tr = cli.Translator(cli.ResolveLang(*langFlag, ""))
 	args := fs.Args()
 	cmd := "run"
 	if len(args) > 0 {
@@ -62,14 +63,14 @@ func run() error {
 	switch cmd {
 	case "enroll":
 		ef := flag.NewFlagSet("enroll", flag.ExitOnError)
-		srv := ef.String("server", cfg.ServerURL, "gateway URL, e.g. https://sentrix.example.com:8443")
-		tok := ef.String("token", "", "one-time enrolment token")
-		fp := ef.String("ca-fingerprint", "", "SHA-256 fingerprint of the server CA")
-		name := ef.String("hostname", "", "override hostname")
-		force := ef.Bool("force", false, "re-enrol even if already enrolled")
+		srv := ef.String("server", cfg.ServerURL, tr("cli.agent.flag.server"))
+		tok := ef.String("token", "", tr("cli.agent.flag.token"))
+		fp := ef.String("ca-fingerprint", "", tr("cli.agent.flag.fingerprint"))
+		name := ef.String("hostname", "", tr("cli.agent.flag.hostname"))
+		force := ef.Bool("force", false, tr("cli.agent.flag.force"))
 		_ = ef.Parse(args)
 		if agent.Enrolled(cfg.StateDir) && !*force {
-			return fmt.Errorf("already enrolled (state in %s); use --force to re-enrol", cfg.StateDir)
+			return errors.New(tr("cli.agent.alreadyEnrolled", cfg.StateDir))
 		}
 		host := *name
 		if host == "" {
@@ -79,7 +80,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("enrolled as %s\n", id.AgentID)
+		fmt.Println(tr("cli.agent.enrolled", id.AgentID))
 		return nil
 	case "run":
 		a, err := agent.New(cfg, log)
@@ -94,7 +95,7 @@ func run() error {
 		return a.Run(ctx)
 	case "inventory":
 		ivf := flag.NewFlagSet("inventory", flag.ExitOnError)
-		refresh := ivf.Bool("refresh", false, "refresh package metadata (apt-get update / apk update) first")
+		refresh := ivf.Bool("refresh", false, tr("cli.agent.flag.refresh"))
 		_ = ivf.Parse(args)
 		inv := agent.NewInventoryCollector(cfg.ProcRoot, cfg.DockerSocket, *refresh).Collect(ctx)
 		enc := json.NewEncoder(os.Stdout)
@@ -102,6 +103,6 @@ func run() error {
 		return enc.Encode(inv)
 	default:
 		fs.Usage()
-		return fmt.Errorf("unknown command %q", cmd)
+		return errors.New(tr("cli.unknownCommand", cmd))
 	}
 }

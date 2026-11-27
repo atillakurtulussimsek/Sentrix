@@ -3,6 +3,7 @@
 # containers (Debian + Rocky) → dry run lists packages → apply with --approve → hosts
 # re-inventory with fewer CVEs → audit log complete. Uses only the sentrix CLI.
 set -euo pipefail
+export SENTRIX_LANGUAGE=en   # this script parses CLI output (token create, patch plan)
 cd "$(dirname "$0")/../.."
 ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
 BIN="$PWD/bin/linux_$ARCH"

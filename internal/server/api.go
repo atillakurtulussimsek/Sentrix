@@ -128,5 +128,3 @@ func (s *Server) apiSeries(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, out)
 }
-
-func itoa(n int) string { return strconv.Itoa(n) }

@@ -10,3 +10,6 @@
 coverage.out
 dist/
 node_modules/
+/sentrix-server
+/sentrix
+/sentrix-agent

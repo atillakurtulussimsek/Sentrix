@@ -3,6 +3,7 @@
 # webhook alert (no repeat within cooldown) and a resolve message after cleanup.
 # Linux + root (loop mount). Run: sudo -E test/acceptance/alert-disk.sh
 set -euo pipefail
+export SENTRIX_LANGUAGE=en   # this script parses CLI output (token create, patch plan)
 cd "$(dirname "$0")/../.."
 BIN=${BIN:-bin}
 WORK=$(mktemp -d)

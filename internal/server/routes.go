@@ -13,6 +13,7 @@ func (s *Server) viewerRoutes(r chi.Router) {
 	r.Post("/settings/account/password", s.handlePasswordChange)
 	r.Post("/settings/account/totp", s.handleTOTPEnable)
 	r.Post("/settings/account/totp/disable", s.handleTOTPDisable)
+	r.Post("/settings/account/language", s.handleAccountLanguage)
 	r.Get("/settings/tokens", s.handleTokens)
 	r.Post("/settings/tokens", s.handleTokenCreate)
 	r.Post("/settings/tokens/{id}/delete", s.handleTokenDelete)

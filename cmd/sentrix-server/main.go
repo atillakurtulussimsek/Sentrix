@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -17,46 +18,34 @@ import (
 	"github.com/atillakurtulussimsek/Sentrix/internal/auth"
 	"github.com/atillakurtulussimsek/Sentrix/internal/cli"
 	"github.com/atillakurtulussimsek/Sentrix/internal/config"
+	"github.com/atillakurtulussimsek/Sentrix/internal/i18n"
 	"github.com/atillakurtulussimsek/Sentrix/internal/notify"
 	"github.com/atillakurtulussimsek/Sentrix/internal/server"
 	"github.com/atillakurtulussimsek/Sentrix/internal/store"
 	"github.com/atillakurtulussimsek/Sentrix/internal/version"
 )
 
-const usage = `Usage: sentrix-server [--config FILE] <command>
-
-Commands:
-  serve                       run the server (default)
-  token create [--note N] [--group G] [--ttl 24h]
-                              create a one-time agent enrolment token
-  ca-fingerprint              print the CA fingerprint agents must pin
-  stats                       print a JSON summary of stored data
-  user create|reset-password --username U [--role R]
-                              manage local users (password via SENTRIX_PASSWORD or stdin)
-  audit [--target ID]         print the audit log
-  channel create ...          add a notification channel (headless setup)
-  rule create ...             add a threshold alert rule (headless setup)
-  api-token create --user U [--scope read|operate|admin] [--name N]
-                              create an API token for the sentrix CLI
-  hosts                       list hosts and their status
-  findings [--host NAME]      list vulnerability findings (TSV)
-  sync-feeds                  download vulnerability feeds now and re-match hosts
-  healthcheck                 exit 0 if the local UI listener answers /healthz
-  version                     print version
-`
+// tr translates CLI messages; run binds it to the resolved language.
+var tr = cli.Translator(i18n.DefaultLang)
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		fmt.Fprintln(os.Stderr, tr("cli.error", err))
 		os.Exit(1)
 	}
 }
 
 func run() error {
 	fs := flag.NewFlagSet("sentrix-server", flag.ExitOnError)
-	cfgPath := fs.String("config", os.Getenv("SENTRIX_CONFIG"), "config file (YAML)")
-	fs.Usage = func() { fmt.Fprint(os.Stderr, usage) }
+	tr = cli.Translator(cli.ResolveLang("", ""))
+	cfgPath := fs.String("config", os.Getenv("SENTRIX_CONFIG"), tr("cli.flag.config"))
+	langFlag := fs.String("lang", "", tr("cli.flag.lang"))
+	fs.Usage = func() {
+		tr = cli.Translator(cli.ResolveLang(*langFlag, ""))
+		fmt.Fprint(os.Stderr, tr("cli.server.usage"))
+	}
 	_ = fs.Parse(os.Args[1:])
+	tr = cli.Translator(cli.ResolveLang(*langFlag, ""))
 	args := fs.Args()
 	cmd := "serve"
 	if len(args) > 0 {
@@ -70,6 +59,8 @@ func run() error {
 	if err := config.Load(*cfgPath, &cfg); err != nil {
 		return err
 	}
+	lang := cli.ResolveLang(*langFlag, cfg.Language)
+	tr = cli.Translator(lang)
 	if cmd == "healthcheck" { // used by the container HEALTHCHECK (no curl in distroless)
 		port := cfg.Listen
 		if strings.HasPrefix(port, ":") {
@@ -81,7 +72,7 @@ func run() error {
 		}
 		resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("unhealthy: %s", resp.Status)
+			return errors.New(tr("cli.server.unhealthy", resp.Status))
 		}
 		return nil
 	}
@@ -116,7 +107,7 @@ func run() error {
 		return nil
 	case "findings":
 		ff := flag.NewFlagSet("findings", flag.ExitOnError)
-		host := ff.String("host", "", "hostname filter")
+		host := ff.String("host", "", tr("cli.server.flag.host"))
 		_ = ff.Parse(args)
 		hosts, err := db.ListHosts(ctx)
 		if err != nil {
@@ -144,15 +135,15 @@ func run() error {
 		return srv.SyncFeeds(ctx, true)
 	case "user":
 		if len(args) == 0 || (args[0] != "create" && args[0] != "reset-password") {
-			return fmt.Errorf("usage: user create|reset-password --username U [--role admin|operator|viewer]  (password from SENTRIX_PASSWORD or stdin)")
+			return errors.New(tr("cli.server.usageUser"))
 		}
 		uf := flag.NewFlagSet("user", flag.ExitOnError)
-		name := uf.String("username", "", "username")
+		name := uf.String("username", "", tr("cli.server.flag.username"))
 		role := uf.String("role", "admin", "admin | operator | viewer")
 		_ = uf.Parse(args[1:])
 		pw := os.Getenv("SENTRIX_PASSWORD")
 		if pw == "" {
-			fmt.Fprint(os.Stderr, "password: ")
+			fmt.Fprint(os.Stderr, tr("cli.server.passwordPrompt"))
 			if _, err := fmt.Fscanln(os.Stdin, &pw); err != nil {
 				return err
 			}
@@ -166,19 +157,19 @@ func run() error {
 		}
 		if args[0] == "create" {
 			if store.RoleRank(*role) == 0 {
-				return fmt.Errorf("invalid role")
+				return errors.New(tr("cli.server.invalidRole"))
 			}
 			u, err := db.CreateUser(ctx, *name, hash, *role)
 			if err != nil {
 				return err
 			}
 			_ = db.Audit(ctx, "cli:sentrix-server", "user.create", u.ID, "username="+*name+" role="+*role)
-			fmt.Println("created", u.Username, u.Role)
+			fmt.Println(tr("cli.server.userCreated", u.Username, u.Role))
 			return nil
 		}
 		u, err := db.GetUserByName(ctx, *name)
 		if err != nil {
-			return fmt.Errorf("user %q not found", *name)
+			return errors.New(tr("cli.server.userNotFound", *name))
 		}
 		u.PasswordHash, u.TOTPSecret, u.Disabled = hash, "", false
 		if err := db.UpdateUser(ctx, u); err != nil {
@@ -186,12 +177,12 @@ func run() error {
 		}
 		_ = db.DeleteUserSessions(ctx, u.ID)
 		_ = db.Audit(ctx, "cli:sentrix-server", "user.reset_password", u.ID, "2FA cleared")
-		fmt.Println("password reset (2FA disabled) for", u.Username)
+		fmt.Println(tr("cli.server.passwordReset", u.Username))
 		return nil
 	case "audit":
 		af := flag.NewFlagSet("audit", flag.ExitOnError)
-		target := af.String("target", "", "filter by target ID")
-		limit := af.Int("limit", 100, "entries")
+		target := af.String("target", "", tr("cli.server.flag.target"))
+		limit := af.Int("limit", 100, tr("cli.server.flag.limit"))
 		_ = af.Parse(args)
 		es, err := db.ListAudit(ctx, *target, *limit)
 		if err != nil {
@@ -204,13 +195,13 @@ func run() error {
 		return nil
 	case "channel":
 		if len(args) == 0 || args[0] != "create" {
-			return fmt.Errorf("usage: channel create --name N --kind webhook|slack|discord|ntfy --url URL [--topic T]")
+			return errors.New(tr("cli.server.usageChannel"))
 		}
 		cf := flag.NewFlagSet("channel create", flag.ExitOnError)
-		name := cf.String("name", "", "channel name")
+		name := cf.String("name", "", tr("cli.server.flag.channelName"))
 		kind := cf.String("kind", "webhook", "webhook | slack | discord | ntfy")
 		u := cf.String("url", "", "URL")
-		topic := cf.String("topic", "", "ntfy topic")
+		topic := cf.String("topic", "", tr("cli.server.flag.topic"))
 		_ = cf.Parse(args[1:])
 		b, _ := json.Marshal(notify.Config{URL: *u, Topic: *topic})
 		c, err := db.SaveChannel(ctx, store.Channel{Name: *name, Kind: *kind, Config: string(b), Enabled: true})
@@ -221,17 +212,17 @@ func run() error {
 		return nil
 	case "rule":
 		if len(args) == 0 || args[0] != "create" {
-			return fmt.Errorf("usage: rule create --name N --metric M [--labels L] --op '>' --value V [--for 5m] [--cooldown 6h] [--channel NAME]")
+			return errors.New(tr("cli.server.usageRule"))
 		}
 		rf := flag.NewFlagSet("rule create", flag.ExitOnError)
-		name := rf.String("name", "", "rule name")
-		metric := rf.String("metric", "", "metric, e.g. disk.used_pct")
-		labels := rf.String("labels", "", "exact labels, e.g. mount=/")
+		name := rf.String("name", "", tr("cli.server.flag.ruleName"))
+		metric := rf.String("metric", "", tr("cli.server.flag.metric"))
+		labels := rf.String("labels", "", tr("cli.server.flag.labels"))
 		op := rf.String("op", ">", "> >= < <=")
-		val := rf.Float64("value", 90, "threshold")
-		forDur := rf.Duration("for", 5*time.Minute, "condition must hold this long")
-		cool := rf.Duration("cooldown", 6*time.Hour, "minimum time between notifications")
-		chName := rf.String("channel", "", "channel name (default: all channels)")
+		val := rf.Float64("value", 90, tr("cli.server.flag.value"))
+		forDur := rf.Duration("for", 5*time.Minute, tr("cli.server.flag.for"))
+		cool := rf.Duration("cooldown", 6*time.Hour, tr("cli.server.flag.cooldown"))
+		chName := rf.String("channel", "", tr("cli.server.flag.channel"))
 		sev := rf.String("severity", "warning", "info | warning | critical")
 		_ = rf.Parse(args[1:])
 		rc := notify.RuleConfig{Metric: *metric, Labels: *labels, Op: *op, Value: *val}
@@ -247,7 +238,7 @@ func run() error {
 				}
 			}
 			if len(chans) == 0 {
-				return fmt.Errorf("channel %q not found", *chName)
+				return errors.New(tr("cli.server.channelNotFound", *chName))
 			}
 		}
 		b, _ := json.Marshal(rc)
@@ -259,20 +250,20 @@ func run() error {
 		return nil
 	case "api-token":
 		if len(args) == 0 || args[0] != "create" {
-			return fmt.Errorf("usage: api-token create --user NAME [--scope read|operate|admin] [--name NAME] [--ttl 720h]")
+			return errors.New(tr("cli.server.usageAPIToken"))
 		}
 		af := flag.NewFlagSet("api-token create", flag.ExitOnError)
-		user := af.String("user", "", "user the token acts as")
+		user := af.String("user", "", tr("cli.server.flag.user"))
 		scope := af.String("scope", "read", "read | operate | admin")
-		name := af.String("name", "cli", "token name")
-		ttl := af.Duration("ttl", 0, "lifetime (0 = no expiry)")
+		name := af.String("name", "cli", tr("cli.server.flag.tokenName"))
+		ttl := af.Duration("ttl", 0, tr("cli.server.flag.apiTTL"))
 		_ = af.Parse(args[1:])
 		u, err := db.GetUserByName(ctx, *user)
 		if err != nil {
-			return fmt.Errorf("user %q not found", *user)
+			return errors.New(tr("cli.server.userNotFound", *user))
 		}
 		if *scope != "read" && *scope != "operate" && *scope != "admin" {
-			return fmt.Errorf("invalid scope")
+			return errors.New(tr("cli.server.invalidScope"))
 		}
 		tok := server.GenerateToken("sxa_")
 		if _, err := db.CreateAPIToken(ctx, store.HashToken(tok), u.ID, *name, *scope, *ttl); err != nil {
@@ -292,23 +283,22 @@ func run() error {
 		return nil
 	case "token":
 		if len(args) == 0 || args[0] != "create" {
-			return fmt.Errorf("usage: token create [--note N] [--group G] [--ttl 24h]")
+			return errors.New(tr("cli.server.usageToken"))
 		}
 		tf := flag.NewFlagSet("token create", flag.ExitOnError)
-		note := tf.String("note", "", "note")
-		group := tf.String("group", "", "group assigned to the enrolled host")
-		ttl := tf.Duration("ttl", 24*time.Hour, "token lifetime")
+		note := tf.String("note", "", tr("cli.server.flag.note"))
+		group := tf.String("group", "", tr("cli.server.flag.group"))
+		ttl := tf.Duration("ttl", 24*time.Hour, tr("cli.server.flag.ttl"))
 		_ = tf.Parse(args[1:])
 		tok, _, err := srv.CreateEnrollToken(ctx, *note, *group, *ttl)
 		if err != nil {
 			return err
 		}
 		fp := srv.CA().Fingerprint()
-		fmt.Printf("token:          %s\nca fingerprint: %s\n\ninstall + enrol (run as root on the host):\n  curl -fsSL %s/install.sh | sudo sh -s -- --token %s --ca-fingerprint %s\n\nalready installed:\n  sentrix-agent enroll --server %s --token %s --ca-fingerprint %s\n",
-			tok, fp, strings.TrimRight(cfg.BaseURL, "/"), tok, fp, cfg.GatewayURL, tok, fp)
+		fmt.Print(tr("cli.server.tokenCreated", tok, fp, strings.TrimRight(cfg.BaseURL, "/"), tok, fp, cli.ResolveLang("", cfg.Language), cfg.GatewayURL, tok, fp))
 		return nil
 	default:
 		fs.Usage()
-		return fmt.Errorf("unknown command %q", cmd)
+		return errors.New(tr("cli.unknownCommand", cmd))
 	}
 }

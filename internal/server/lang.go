@@ -67,7 +67,7 @@ func (s *Server) handleSetLanguage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	http.Redirect(w, r, backTo(r), http.StatusSeeOther)
+	http.Redirect(w, r, backTo(r), http.StatusSeeOther) //nolint:gosec // backTo only returns same-origin paths (safeNext)
 }
 
 // backTo returns the same-origin path of the Referer, or "/".

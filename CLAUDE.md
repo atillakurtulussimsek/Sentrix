@@ -28,4 +28,5 @@ Full product brief lives in `docs/BRIEF.md`.
 - camelCase identifiers; PascalCase types; UPPER_SNAKE_CASE only for env names.
 - No arbitrary shell in the agent: actions are a fixed typed enum (`internal/protocol/actions.go`).
 - Unit tests never hit live feeds; use `test/fixtures`.
+- User-facing text goes through the catalog (`web/i18n/{tr,en}/*.json`, Turkish is the default); add every key to both languages (parity test).
 - Every exported identifier in `internal/vuln` and `internal/patch` has a doc comment.
