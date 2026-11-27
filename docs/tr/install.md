@@ -26,6 +26,8 @@ SENTRIX_HOST=sentrix.example.com docker compose up -d
 - **8443** portunu doğrudan (ya da bir TCP rotası / TLS passthrough olarak) yayımlayın. Bu port ters vekil tarafından
   **sonlandırılmamalıdır**: ajanlar istemci sertifikalarıyla kimlik doğrular.
   `SENTRIX_GATEWAY_URL=https://sentrix.example.com:8443` değerini ayarlayın.
+- Sunucudaki 8080 ya da 8443 portu doluysa ("port is already allocated"), servis ortamına `SENTRIX_UI_PORT` /
+  `SENTRIX_GATEWAY_PORT` ekleyin (ör. `SENTRIX_UI_PORT=8090`); varsayılan adresler bu portlara göre oluşur.
 
 ### Paketler (.deb / .rpm) ve ikili dosyalar
 

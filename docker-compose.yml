@@ -3,17 +3,18 @@
 # then open http://SENTRIX_HOST:8080 (put an HTTPS reverse proxy in front for production).
 # Agents connect to https://SENTRIX_HOST:8443 (mutual TLS terminated by Sentrix itself:
 # forward this port as plain TCP, do not terminate TLS on it).
+# Host ports are configurable when 8080/8443 are taken: SENTRIX_UI_PORT, SENTRIX_GATEWAY_PORT.
 services:
   sentrix:
     image: ${SENTRIX_IMAGE:-ghcr.io/atillakurtulussimsek/sentrix:latest}
     build: .
     restart: unless-stopped
     ports:
-      - "8080:8080"   # web UI / API
-      - "8443:8443"   # agent gateway (mTLS)
+      - "${SENTRIX_UI_PORT:-8080}:8080"        # web UI / API
+      - "${SENTRIX_GATEWAY_PORT:-8443}:8443"   # agent gateway (mTLS)
     environment:
-      SENTRIX_BASE_URL: ${SENTRIX_BASE_URL:-http://${SENTRIX_HOST:-localhost}:8080}
-      SENTRIX_GATEWAY_URL: https://${SENTRIX_HOST:-localhost}:8443
+      SENTRIX_BASE_URL: ${SENTRIX_BASE_URL:-http://${SENTRIX_HOST:-localhost}:${SENTRIX_UI_PORT:-8080}}
+      SENTRIX_GATEWAY_URL: https://${SENTRIX_HOST:-localhost}:${SENTRIX_GATEWAY_PORT:-8443}
       SENTRIX_GATEWAY_HOSTS: ${SENTRIX_HOST:-localhost},localhost,127.0.0.1
       SENTRIX_LANGUAGE: tr   # default UI/notification/CLI language; "en" is also supported
       # SENTRIX_NVD_API_KEY: ""   # optional: faster CVSS enrichment

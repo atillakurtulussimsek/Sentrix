@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Translatable risk-score explanations; Turkish documentation (`README.md`, `docs/tr/`, `SECURITY.tr.md`, `CONTRIBUTING.tr.md`); English README moved to `README.en.md`.
 
 ### Changed
+- docker-compose host ports are configurable (`SENTRIX_UI_PORT`, `SENTRIX_GATEWAY_PORT`) for hosts where 8080/8443 are taken.
 - Message catalogs split per language and area (`web/i18n/<lang>/*.json`); a parity test enforces identical keys and format verbs.
 
 ## [0.1.0] - 2026-11-27

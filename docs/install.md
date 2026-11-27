@@ -25,6 +25,8 @@ SENTRIX_HOST=sentrix.example.com docker compose up -d
   `SENTRIX_BASE_URL=https://sentrix.example.com`. Cookies become `Secure` automatically.
 - Publish port **8443** directly (or as a TCP route / TLS passthrough). It must **not** be terminated by the
   proxy: agents authenticate with client certificates. Set `SENTRIX_GATEWAY_URL=https://sentrix.example.com:8443`.
+- If host port 8080 or 8443 is already taken ("port is already allocated"), set `SENTRIX_UI_PORT` / `SENTRIX_GATEWAY_PORT`
+  (e.g. `SENTRIX_UI_PORT=8090`) in the service environment; the default URLs follow these ports.
 
 ### Packages (.deb / .rpm) and binaries
 
